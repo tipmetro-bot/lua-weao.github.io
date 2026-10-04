@@ -1,0 +1,3290 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>luaweao — script hub & key system</title>
+<meta name="description" content="luaweao — monochrome script hub: key system, free Lua obfuscator, loadstring builder. Single self-contained HTML file.">
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23000'/%3E%3Ctext x='32' y='44' font-family='monospace' font-size='34' fill='%23fff' text-anchor='middle'%3EL%3C/text%3E%3C/svg%3E">
+<style>
+/* ============================================================
+   luaweao — monochrome design system
+   pure black / white only. no other colors.
+   ============================================================ */
+
+:root{
+  --bg:#000;
+  --bg-1:#050505;
+  --bg-2:#0b0b0b;
+  --bg-3:#111;
+  --line:#1e1e1e;
+  --line-2:#2a2a2a;
+  --fg:#fff;
+  --fg-2:#c9c9c9;
+  --fg-3:#8b8b8b;
+  --fg-4:#5b5b5b;
+  --inv-bg:#fff;
+  --inv-fg:#000;
+  --r:10px;
+  --r-sm:6px;
+  --maxw:1180px;
+  --mono:"JetBrains Mono","SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--sans);
+  font-size:15px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer}
+::selection{background:#fff;color:#000}
+
+/* film grain */
+.grain{
+  position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.035;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* scrollbars */
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:#000}
+::-webkit-scrollbar-thumb{background:#242424;border:2px solid #000;border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:#3a3a3a}
+
+/* ============ nav ============ */
+.nav{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;gap:22px;
+  padding:0 22px;height:62px;
+  background:rgba(0,0,0,.78);
+  backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.brand-mark{
+  width:28px;height:28px;display:grid;place-items:center;
+  background:var(--inv-bg);color:var(--inv-fg);
+  font-family:var(--mono);font-weight:700;font-size:15px;
+  border-radius:7px;transition:transform .25s ease;
+}
+.brand-name{font-family:var(--mono);font-weight:600;letter-spacing:-.02em;font-size:16px}
+.brand:hover .brand-mark{transform:rotate(-6deg)}
+
+.nav-links{display:flex;align-items:center;gap:2px;margin-left:12px;flex:1}
+.nav-links a{
+  position:relative;padding:7px 12px;border-radius:var(--r-sm);
+  color:var(--fg-3);font-size:13.5px;font-weight:500;transition:.16s;
+}
+.nav-links a:hover{color:var(--fg);background:var(--bg-2)}
+.nav-links a.active{color:var(--fg)}
+.nav-links a.active::after{
+  content:"";position:absolute;left:12px;right:12px;bottom:2px;height:1px;background:#fff;
+}
+
+.nav-right{display:flex;align-items:center;gap:10px}
+.lang-switch{
+  display:flex;align-items:center;gap:5px;
+  background:transparent;border:1px solid var(--line-2);color:var(--fg-3);
+  border-radius:999px;padding:5px 11px;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;
+  transition:.16s;
+}
+.lang-switch:hover{border-color:#fff;color:#fff}
+.lang-switch .sep{color:var(--fg-4)}
+.lang-switch span.on{color:#fff}
+.lang-switch span:not(.on){opacity:.45}
+
+.nav-auth{display:flex;align-items:center;gap:8px}
+.burger{display:none;background:none;border:0;padding:6px;flex-direction:column;gap:4px}
+.burger span{display:block;width:18px;height:1.5px;background:#fff}
+
+/* ============ buttons ============ */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  border:1px solid var(--line-2);background:transparent;color:var(--fg);
+  padding:9px 16px;border-radius:8px;font-size:13.5px;font-weight:550;
+  transition:.16s;white-space:nowrap;
+}
+.btn:hover{border-color:#fff;background:#0e0e0e}
+.btn:active{transform:translateY(1px)}
+.btn.solid{background:var(--inv-bg);color:var(--inv-fg);border-color:#fff;font-weight:600}
+.btn.solid:hover{background:#e6e6e6;border-color:#e6e6e6}
+.btn.ghost{border-color:transparent;color:var(--fg-2)}
+.btn.ghost:hover{color:#fff;background:var(--bg-2);border-color:transparent}
+.btn.sm{padding:6px 11px;font-size:12px;border-radius:6px}
+.btn.lg{padding:13px 24px;font-size:15px}
+.btn.danger:hover{border-color:#fff;background:#fff;color:#000}
+.btn[disabled]{opacity:.35;pointer-events:none}
+.btn.block{width:100%}
+
+/* ============ layout ============ */
+.view{min-height:calc(100vh - 62px - 76px)}
+.wrap{max-width:var(--maxw);margin:0 auto;padding:0 22px}
+.section{padding:64px 0}
+.section.tight{padding:38px 0}
+
+/* ============ hero ============ */
+.hero{
+  position:relative;padding:96px 0 84px;overflow:hidden;
+  border-bottom:1px solid var(--line);
+}
+.hero::before{
+  content:"";position:absolute;inset:0;
+  background:
+    radial-gradient(700px 340px at 78% 6%, rgba(255,255,255,.10), transparent 70%),
+    linear-gradient(#000,#000 60%,#060606);
+}
+.hero::after{
+  content:"";position:absolute;inset:0;opacity:.5;
+  background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:56px 56px;
+  mask-image:radial-gradient(900px 420px at 50% 0%,#000,transparent 78%);
+  -webkit-mask-image:radial-gradient(900px 420px at 50% 0%,#000,transparent 78%);
+}
+.hero-in{position:relative;z-index:2;max-width:var(--maxw);margin:0 auto;padding:0 22px}
+.hero-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  border:1px solid var(--line-2);border-radius:999px;padding:5px 13px;
+  font-family:var(--mono);font-size:11.5px;color:var(--fg-2);letter-spacing:.04em;
+  background:rgba(255,255,255,.03);
+}
+.dot{width:6px;height:6px;border-radius:50%;background:#fff;animation:pulse 1.8s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}
+
+h1.hero-title{
+  font-size:clamp(40px,7.4vw,82px);line-height:.98;letter-spacing:-.045em;
+  font-weight:700;margin:22px 0 0;
+}
+h1.hero-title .thin{font-weight:200;color:var(--fg-2)}
+h1.hero-title .stroke{
+  -webkit-text-stroke:1px #fff;color:transparent;
+}
+.hero-sub{
+  max-width:560px;margin:20px 0 0;color:var(--fg-3);font-size:16.5px;
+}
+.hero-cta{display:flex;flex-wrap:wrap;gap:11px;margin-top:30px}
+
+.hero-stats{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1px;margin-top:62px;
+  border:1px solid var(--line);border-radius:var(--r);overflow:hidden;background:var(--line);
+}
+.stat{background:#000;padding:18px 20px}
+.stat b{display:block;font-family:var(--mono);font-size:26px;letter-spacing:-.03em}
+.stat span{font-size:11.5px;color:var(--fg-4);text-transform:uppercase;letter-spacing:.1em}
+
+/* terminal preview */
+.term{
+  margin-top:44px;border:1px solid var(--line-2);border-radius:var(--r);
+  background:#050505;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.7);
+}
+.term-bar{
+  display:flex;align-items:center;gap:8px;padding:9px 14px;border-bottom:1px solid var(--line);
+  background:#0a0a0a;font-family:var(--mono);font-size:11.5px;color:var(--fg-4);
+}
+.term-bar .dots{display:flex;gap:5px;margin-right:6px}
+.term-bar .dots i{width:8px;height:8px;border-radius:50%;background:#2b2b2b;display:block}
+.term-body{
+  padding:16px;font-family:var(--mono);font-size:12.8px;line-height:1.75;color:var(--fg-2);
+  white-space:pre-wrap;word-break:break-all;max-height:230px;overflow:auto;
+}
+.term-body .c-key{color:#fff}
+.term-body .c-str{color:#fff;text-decoration:underline;text-underline-offset:3px}
+.term-body .c-com{color:var(--fg-4);font-style:italic}
+.caret{display:inline-block;width:8px;height:15px;background:#fff;vertical-align:-2px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+
+/* ============ generic blocks ============ */
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(2,1fr)}
+.g3{grid-template-columns:repeat(3,1fr)}
+.g4{grid-template-columns:repeat(4,1fr)}
+
+.card{
+  border:1px solid var(--line);border-radius:var(--r);background:var(--bg-1);
+  padding:22px;transition:.18s;position:relative;overflow:hidden;
+}
+.card:hover{border-color:var(--line-2);background:var(--bg-2)}
+.card .ic{
+  width:34px;height:34px;border:1px solid var(--line-2);border-radius:8px;
+  display:grid;place-items:center;margin-bottom:14px;font-family:var(--mono);font-size:14px;
+}
+.card h3{margin:0 0 6px;font-size:15.5px;letter-spacing:-.01em}
+.card p{margin:0;color:var(--fg-3);font-size:13.5px}
+
+.head{margin-bottom:26px}
+.head .eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--fg-4);
+}
+.head h2{font-size:clamp(26px,4vw,38px);letter-spacing:-.035em;margin:8px 0 6px;font-weight:650}
+.head p{color:var(--fg-3);margin:0;max-width:640px}
+
+.divider{height:1px;background:var(--line);margin:0}
+
+/* marquee */
+.marquee{
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  overflow:hidden;padding:14px 0;background:#000;
+}
+.marquee-track{display:flex;gap:44px;width:max-content;animation:slide 26s linear infinite}
+.marquee span{
+  font-family:var(--mono);font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--fg-4);white-space:nowrap;
+}
+@keyframes slide{to{transform:translateX(-50%)}}
+
+/* ============ forms ============ */
+.form{display:flex;flex-direction:column;gap:14px}
+.field{display:flex;flex-direction:column;gap:6px}
+.field label{font-size:12px;color:var(--fg-3);letter-spacing:.02em}
+.input,.select,textarea.input{
+  background:#060606;border:1px solid var(--line-2);color:#fff;
+  padding:11px 13px;border-radius:8px;font-size:14px;font-family:inherit;outline:none;transition:.16s;width:100%;
+}
+textarea.input{font-family:var(--mono);font-size:12.6px;line-height:1.6;resize:vertical;min-height:220px}
+.input:focus,.select:focus,textarea.input:focus{border-color:#fff;background:#0b0b0b}
+.input::placeholder{color:var(--fg-4)}
+.select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,#fff 50%),linear-gradient(135deg,#fff 50%,transparent 50%);
+  background-position:calc(100% - 18px) 19px,calc(100% - 13px) 19px;background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.hint{font-size:11.5px;color:var(--fg-4)}
+.err{
+  border:1px solid #fff;background:#fff;color:#000;padding:10px 13px;border-radius:8px;
+  font-size:13px;font-weight:550;
+}
+.ok{
+  border:1px dashed var(--line-2);padding:10px 13px;border-radius:8px;font-size:13px;color:var(--fg-2);
+}
+
+/* auth pages */
+.auth-shell{min-height:calc(100vh - 62px);display:grid;place-items:center;padding:48px 22px;position:relative;overflow:hidden}
+.auth-shell::before{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(600px 400px at 50% -10%,rgba(255,255,255,.09),transparent 70%);
+}
+.auth-box{
+  position:relative;width:100%;max-width:400px;border:1px solid var(--line-2);
+  border-radius:14px;background:#050505;padding:30px;box-shadow:0 30px 90px rgba(0,0,0,.8);
+}
+.auth-box h1{font-size:23px;letter-spacing:-.03em;margin:0 0 4px}
+.auth-box .sub{color:var(--fg-3);font-size:13.5px;margin:0 0 24px}
+.auth-alt{margin-top:18px;text-align:center;font-size:13px;color:var(--fg-3)}
+.auth-alt a{color:#fff;text-decoration:underline;text-underline-offset:3px}
+.auth-sep{display:flex;align-items:center;gap:10px;color:var(--fg-4);font-size:11px;letter-spacing:.14em;margin:16px 0}
+.auth-sep::before,.auth-sep::after{content:"";height:1px;background:var(--line);flex:1}
+
+/* ============ panels / tables ============ */
+.panel{border:1px solid var(--line);border-radius:var(--r);background:var(--bg-1);overflow:hidden}
+.panel-head{
+  display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
+  padding:16px 18px;border-bottom:1px solid var(--line);background:#080808;
+}
+.panel-head h3{margin:0;font-size:14.5px;letter-spacing:-.01em}
+.panel-head .tools{display:flex;gap:8px;flex-wrap:wrap}
+.panel-body{padding:18px}
+.panel-body.flush{padding:0}
+
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.row.between{justify-content:space-between}
+.spacer{flex:1}
+
+.kv{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.kv:last-child{border-bottom:0}
+.kv span{color:var(--fg-3)}
+.kv b{font-family:var(--mono);font-weight:500;text-align:right;word-break:break-all}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.tbl th{
+  text-align:left;padding:11px 16px;color:var(--fg-4);font-weight:500;font-size:11px;
+  letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid var(--line);background:#070707;
+}
+table.tbl td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.tbl tr:last-child td{border-bottom:0}
+table.tbl tbody tr:hover{background:#0a0a0a}
+.mono{font-family:var(--mono)}
+.muted{color:var(--fg-3)}
+.tiny{font-size:11.5px}
+
+.badge{
+  display:inline-flex;align-items:center;gap:5px;border:1px solid var(--line-2);
+  border-radius:999px;padding:2px 9px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+}
+.badge.on{background:#fff;color:#000;border-color:#fff}
+.badge.off{color:var(--fg-3)}
+.badge.dead{color:#000;background:#fff;border-color:#fff;text-decoration:line-through}
+
+/* key display */
+.keybox{
+  display:flex;align-items:center;gap:10px;border:1px solid var(--line-2);border-radius:8px;
+  padding:11px 13px;background:#000;flex-wrap:wrap;
+}
+.keybox code{
+  font-family:var(--mono);font-size:14px;letter-spacing:.09em;flex:1;min-width:150px;
+  word-break:break-all;
+}
+
+/* code block */
+.code{
+  position:relative;border:1px solid var(--line-2);border-radius:9px;background:#000;overflow:hidden;
+}
+.code pre{
+  margin:0;padding:15px;font-family:var(--mono);font-size:12.4px;line-height:1.7;
+  color:var(--fg-2);white-space:pre-wrap;word-break:break-all;max-height:330px;overflow:auto;
+}
+.code .copy{
+  position:absolute;top:9px;right:9px;
+}
+.code-tb{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:8px 12px;border-bottom:1px solid var(--line);background:#080808;
+  font-family:var(--mono);font-size:11px;color:var(--fg-4);letter-spacing:.06em;
+}
+
+/* segmented control */
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:8px;overflow:hidden;background:#050505}
+.seg button{
+  background:none;border:0;color:var(--fg-3);padding:8px 14px;font-size:12.5px;transition:.15s;
+  border-right:1px solid var(--line-2);
+}
+.seg button:last-child{border-right:0}
+.seg button.on{background:#fff;color:#000;font-weight:600}
+.seg button:not(.on):hover{color:#fff;background:#0d0d0d}
+
+/* toggle */
+.tgl{display:inline-flex;align-items:center;gap:9px;cursor:pointer;font-size:13px;color:var(--fg-2);user-select:none}
+.tgl input{display:none}
+.tgl i{
+  width:34px;height:19px;border-radius:999px;border:1px solid var(--line-2);background:#000;
+  position:relative;transition:.18s;display:block;flex-shrink:0;
+}
+.tgl i::after{
+  content:"";position:absolute;top:2px;left:2px;width:13px;height:13px;border-radius:50%;
+  background:#6a6a6a;transition:.18s;
+}
+.tgl input:checked + i{background:#fff;border-color:#fff}
+.tgl input:checked + i::after{left:17px;background:#000}
+
+/* ============ tabs ============ */
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:22px;overflow-x:auto}
+.tabs button{
+  background:none;border:0;color:var(--fg-3);padding:11px 15px;font-size:13.5px;white-space:nowrap;
+  border-bottom:1px solid transparent;margin-bottom:-1px;transition:.15s;
+}
+.tabs button:hover{color:#fff}
+.tabs button.on{color:#fff;border-bottom-color:#fff}
+
+/* ============ steps ============ */
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;counter-reset:s}
+.step{border:1px solid var(--line);border-radius:var(--r);padding:22px;background:var(--bg-1);position:relative}
+.step::before{
+  counter-increment:s;content:"0" counter(s);
+  font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--fg-4);display:block;margin-bottom:10px;
+}
+.step h4{margin:0 0 6px;font-size:15px}
+.step p{margin:0;color:var(--fg-3);font-size:13px}
+
+/* faq */
+.faq{border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.faq details{border-bottom:1px solid var(--line);background:var(--bg-1)}
+.faq details:last-child{border-bottom:0}
+.faq summary{
+  padding:15px 18px;cursor:pointer;list-style:none;display:flex;justify-content:space-between;
+  align-items:center;gap:14px;font-size:14px;font-weight:500;
+}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary::after{content:"+";font-family:var(--mono);color:var(--fg-4);font-size:17px}
+.faq details[open] summary::after{content:"–"}
+.faq details[open] summary{color:#fff}
+.faq .a{padding:0 18px 17px;color:var(--fg-3);font-size:13.5px}
+
+/* empty */
+.empty{padding:52px 20px;text-align:center;color:var(--fg-4);font-size:13.5px}
+.empty b{display:block;color:var(--fg-2);font-size:15px;margin-bottom:6px}
+
+/* page header */
+.pagehead{
+  padding:44px 0 26px;border-bottom:1px solid var(--line);
+  background:linear-gradient(#080808,#000);
+}
+.pagehead h1{font-size:clamp(28px,4.6vw,44px);letter-spacing:-.04em;margin:6px 0 8px;font-weight:650}
+.pagehead p{margin:0;color:var(--fg-3);max-width:620px}
+.crumb{font-family:var(--mono);font-size:11px;color:var(--fg-4);letter-spacing:.1em}
+.crumb b{color:var(--fg-2);font-weight:400}
+
+/* locked overlay */
+.locked{
+  position:relative;border:1px dashed var(--line-2);border-radius:var(--r);
+  padding:34px;text-align:center;background:
+    repeating-linear-gradient(45deg,#000,#000 9px,#070707 9px,#070707 18px);
+}
+.locked h4{margin:0 0 6px;font-size:15px}
+.locked p{margin:0 0 16px;color:var(--fg-3);font-size:13px}
+
+/* toasts */
+.toasts{position:fixed;bottom:20px;right:20px;z-index:1000;display:flex;flex-direction:column;gap:9px}
+.toast{
+  border:1px solid var(--line-2);background:#0a0a0a;color:#fff;padding:11px 15px;border-radius:9px;
+  font-size:13px;box-shadow:0 16px 40px rgba(0,0,0,.7);animation:tin .22s ease;max-width:330px;
+  display:flex;gap:9px;align-items:center;
+}
+.toast.inv{background:#fff;color:#000;border-color:#fff}
+.toast::before{content:"";width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0;opacity:.7}
+@keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* modal */
+.modal-root:empty{display:none}
+.modal-bd{position:fixed;inset:0;background:rgba(0,0,0,.82);backdrop-filter:blur(5px);z-index:1001;display:grid;place-items:center;padding:20px}
+.modal{
+  width:100%;max-width:460px;border:1px solid var(--line-2);border-radius:14px;background:#060606;
+  padding:26px;box-shadow:0 40px 100px rgba(0,0,0,.9);animation:tin .2s ease;
+}
+.modal h3{margin:0 0 8px;font-size:18px;letter-spacing:-.02em}
+.modal p{margin:0 0 20px;color:var(--fg-3);font-size:13.5px}
+.modal .acts{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+
+/* footer */
+.footer{border-top:1px solid var(--line);background:#000;padding:22px 0}
+.footer-inner{
+  max-width:var(--maxw);margin:0 auto;padding:0 22px;
+  display:flex;align-items:center;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--fg-4);
+}
+.footer-logo{font-family:var(--mono);color:#fff;letter-spacing:-.02em}
+.footer-links{margin-left:auto;display:flex;gap:14px}
+.footer-links a:hover{color:#fff}
+
+/* utils */
+.mt0{margin-top:0}.mt8{margin-top:8px}.mt14{margin-top:14px}.mt20{margin-top:20px}.mt28{margin-top:28px}
+.mb0{margin-bottom:0}.mb8{margin-bottom:8px}.mb16{margin-bottom:16px}.mb24{margin-bottom:24px}
+.center{text-align:center}
+.hidden{display:none!important}
+.fade{animation:fade .3s ease}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ============ responsive ============ */
+@media(max-width:900px){
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .g3{grid-template-columns:1fr}
+  .hero-stats{grid-template-columns:repeat(2,1fr)}
+  .steps{grid-template-columns:1fr}
+  .g2{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .nav{padding:0 14px;gap:10px}
+  .burger{display:flex}
+  .nav-links{
+    position:fixed;top:62px;left:0;right:0;flex-direction:column;align-items:stretch;gap:0;
+    background:#000;border-bottom:1px solid var(--line);padding:10px;margin:0;
+    display:none;z-index:99;
+  }
+  .nav-links.open{display:flex}
+  .nav-links a{padding:13px 14px;border-radius:8px;font-size:15px}
+  .nav-links a.active::after{display:none}
+  .nav-links a.active{background:#111}
+  .brand-name{display:none}
+  .wrap,.hero-in,.footer-inner{padding:0 14px}
+  .section{padding:44px 0}
+  .hero{padding:60px 0 52px}
+  .hero-cta .btn{flex:1}
+  table.tbl thead{display:none}
+  table.tbl tr{display:block;border-bottom:1px solid var(--line)}
+  table.tbl td{display:flex;justify-content:space-between;gap:12px;border-bottom:0;padding:8px 16px}
+  table.tbl td::before{content:attr(data-l);color:var(--fg-4);font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  table.tbl td:first-child{padding-top:14px}
+  table.tbl td:last-child{padding-bottom:14px}
+}
+
+</style>
+</head>
+<body>
+
+<div class="grain" aria-hidden="true"></div>
+
+<header class="nav">
+  <a class="brand" href="#/">
+    <span class="brand-mark">L</span>
+    <span class="brand-name">luaweao</span>
+  </a>
+
+  <nav class="nav-links" id="navLinks"></nav>
+
+  <div class="nav-right">
+    <button class="lang-switch" id="langSwitch" type="button" aria-label="Switch language">
+      <span data-lang-val="ru">RU</span><span class="sep">/</span><span data-lang-val="en">EN</span>
+    </button>
+    <div class="nav-auth" id="navAuth"></div>
+    <button class="burger" id="burger" type="button" aria-label="Menu"><span></span><span></span></button>
+  </div>
+</header>
+
+<main id="view" class="view"></main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <span class="footer-logo">luaweao</span>
+    <span class="footer-note" data-i18n="footer.note"></span>
+    <span class="footer-links">
+      <a href="#/" data-i18n="nav.home"></a>
+      <a href="#/scripts" data-i18n="nav.scripts"></a>
+      <a href="#/keys" data-i18n="nav.keys"></a>
+      <a href="#/profile" data-i18n="nav.profile"></a>
+    </span>
+  </div>
+</footer>
+
+<div class="toasts" id="toasts"></div>
+<div class="modal-root" id="modalRoot"></div>
+
+<script>
+/* ============================================================
+   luaweao — i18n (RU / EN)
+   ============================================================ */
+window.I18N = {
+  ru: {
+    "brand": "luaweao",
+
+    "nav.home": "Главная",
+    "nav.scripts": "Скрипты",
+    "nav.keys": "Ключи",
+    "nav.obf": "Обфускатор",
+    "nav.profile": "Профиль",
+    "nav.login": "Войти",
+    "nav.register": "Регистрация",
+    "nav.logout": "Выйти",
+
+    "footer.note": "монохромный скрипт-хаб · ключ-система · обфускатор",
+
+    "home.badge": "key system · free obfuscator · loadstring",
+    "home.t1": "создай.",
+    "home.t2": "обфусцируй.",
+    "home.t3": "выдай ключ.",
+    "home.sub": "luaweao — чёрно-белый хаб: собери скрипт, включи ключ-систему (GUI или loadstring), прогони через бесплатный обфускатор и получи готовый лоадстринг.",
+    "home.cta1": "Создать скрипт",
+    "home.cta2": "Мои ключи",
+    "home.cta3": "Обфускатор",
+
+    "home.stat1": "моих скриптов",
+    "home.stat2": "ключей выдано",
+    "home.stat3": "обфускаций",
+    "home.stat4": "аптайм",
+
+    "home.f.title": "Что внутри",
+    "home.f.sub": "Всё работает локально в браузере, одним файлом.",
+    "home.f1.t": "Конструктор скриптов",
+    "home.f1.d": "Название, код, ключ-система: тоггл и два режима — GUI с окном ключа или loadstring со строкой key = 'ключ'.",
+    "home.f2.t": "Бесплатный обфускатор",
+    "home.f2.d": "Переименование переменных, шифровка строк, мусорный код и слои упаковки. Сразу собирает лоадстринг из результата.",
+    "home.f3.t": "Ключ-система",
+    "home.f3.d": "Ключи вида a3ie9sdl343tr4jr: срок, назначение, отзыв, проверка. Активные ключи вшиваются в пейлоад скрипта.",
+    "home.f4.t": "Аккаунты",
+    "home.f4.d": "Регистрация и вход, история операций, смена пароля. Данные — в localStorage, наружу ничего не уходит.",
+
+    "home.s.title": "Как это работает",
+    "home.s.sub": "Три шага от кода до лоадстринга.",
+    "home.s1.t": "Создай скрипт",
+    "home.s1.d": "Вставь Lua-код, дай название, включи ключ-систему и выбери режим: GUI или без GUI.",
+    "home.s2.t": "Обфускация + ключи",
+    "home.s2.d": "Код уходит во встроенный бесплатный обфускатор, активные ключи вшиваются в пейлоад.",
+    "home.s3.t": "Забери лоадстринг",
+    "home.s3.d": "Скопируй инлайн-лоадстринг или скачай пейлоад .lua и выложи его рядом с сайтом на GitHub.",
+
+    "home.term.title": "пример лоадстринга",
+
+    "home.faq.title": "Частые вопросы",
+    "home.faq1.q": "Это бесплатно?",
+    "home.faq1.a": "Да. Обфускатор встроенный и бесплатный, ключи генерируются без лимита, сайт — один HTML-файл.",
+    "home.faq2.q": "Чем GUI режим отличается от loadstring?",
+    "home.faq2.a": "GUI: при запуске открывается чёрно-белое окно с полем для ключа. Loadstring: пользователь сам вставляет строку key = 'ключ' перед лоадстрингом — окна нет.",
+    "home.faq3.q": "Куда деть пейлоад?",
+    "home.faq3.a": "Скачай .lua и положи в свой репозиторий (или на pastebin). Укажи базовый URL в настройках — и сайт соберёт hosted-лоадстринг с game:HttpGet. Инлайн-лоадстринг работает вообще без хостинга.",
+    "home.faq4.q": "Ключи проверяются на сервере?",
+    "home.faq4.a": "Сервера нет — список активных ключей вшивается в пейлоад на момент генерации и прячется обфускатором. Создал новые ключи — нажми «Обновить пейлоад».",
+    "home.faq5.q": "Где хранятся данные?",
+    "home.faq5.a": "Аккаунты, скрипты и ключи живут в localStorage твоего браузера. Пароли — SHA-256 с солью.",
+
+    "auth.login.title": "С возвращением",
+    "auth.login.sub": "Войди, чтобы управлять скриптами и ключами.",
+    "auth.reg.title": "Создать аккаунт",
+    "auth.reg.sub": "Пара полей — и ты внутри.",
+    "auth.user": "Ник",
+    "auth.pass": "Пароль",
+    "auth.pass2": "Повтори пароль",
+    "auth.submit.login": "Войти",
+    "auth.submit.reg": "Зарегистрироваться",
+    "auth.alt.login": "Ещё нет аккаунта? <a href=\"#/register\">Создать</a>",
+    "auth.alt.reg": "Уже есть аккаунт? <a href=\"#/login\">Войти</a>",
+    "auth.or": "или",
+    "auth.e.user": "Введи ник (минимум 3 символа).",
+    "auth.e.pass": "Пароль минимум 6 символов.",
+    "auth.e.pass2": "Пароли не совпадают.",
+    "auth.e.taken": "Этот ник уже занят.",
+    "auth.e.bad": "Неверный ник или пароль.",
+    "auth.e.len": "Ник: 3–20 символов, без пробелов.",
+    "auth.ok.reg": "Аккаунт создан. Добро пожаловать, {0}!",
+    "auth.ok.login": "С возвращением, {0}!",
+    "auth.ok.logout": "Ты вышел из аккаунта.",
+
+    "keys.title": "Ключ-система",
+    "keys.sub": "Генерируй, проверяй и отзывай ключи. Активные ключи вшиваются в пейлоады скриптов.",
+    "keys.tab.gen": "Генерация",
+    "keys.tab.list": "Мои ключи",
+    "keys.tab.check": "Проверка",
+
+    "keys.gen.len": "Длина ключа",
+    "keys.gen.dur": "Срок действия",
+    "keys.gen.note": "Назначение (необязательно)",
+    "keys.gen.note.ph": "например: приватный скрипт",
+    "keys.gen.count": "Количество",
+    "keys.gen.submit": "Сгенерировать",
+    "keys.gen.result": "Готово",
+    "keys.gen.hint": "Формат ключа — строчные буквы и цифры, как a3ie9sdl343tr4jr.",
+    "keys.gen.copyall": "Скопировать все",
+
+    "keys.dur.1h": "1 час",
+    "keys.dur.24h": "24 часа",
+    "keys.dur.7d": "7 дней",
+    "keys.dur.30d": "30 дней",
+    "keys.dur.forever": "Бессрочно",
+
+    "keys.list.empty": "Пока пусто",
+    "keys.list.emptyd": "Сгенерируй первый ключ — он появится здесь.",
+    "keys.th.key": "Ключ",
+    "keys.th.note": "Назначение",
+    "keys.th.status": "Статус",
+    "keys.th.exp": "Истекает",
+    "keys.th.act": "Действия",
+    "keys.st.active": "активен",
+    "keys.st.expired": "истёк",
+    "keys.st.revoked": "отозван",
+    "keys.act.copy": "Копировать",
+    "keys.act.revoke": "Отозвать",
+    "keys.act.delete": "Удалить",
+    "keys.revoke.q": "Отозвать ключ <b class=\"mono\">{0}</b>? Пейлоады, собранные после этого, его не примут.",
+    "keys.ok.gen": "Создано ключей: {0}",
+    "keys.ok.copy": "Ключ скопирован",
+    "keys.ok.revoke": "Ключ отозван",
+    "keys.ok.del": "Ключ удалён",
+    "keys.never": "никогда",
+
+    "keys.check.ph": "Вставь ключ для проверки",
+    "keys.check.submit": "Проверить",
+    "keys.check.valid": "Ключ действителен",
+    "keys.check.invalid": "Ключ не найден",
+    "keys.check.expired": "Ключ истёк",
+    "keys.check.revoked": "Ключ отозван",
+
+    "scr.title": "Скрипты",
+    "scr.sub": "Создавай скрипты, включай ключ-систему и забирай лоадстринг.",
+    "scr.create": "Создать скрипт",
+    "scr.edit": "Редактировать",
+    "scr.list": "Мои скрипты",
+    "scr.list.empty": "Скриптов пока нет",
+    "scr.list.emptyd": "Создай первый — код, ключ-система, лоадстринг.",
+    "scr.name": "Название",
+    "scr.name.ph": "например: my hub",
+    "scr.code": "Lua-код",
+    "scr.code.ph": "print('hello')",
+    "scr.keysys": "Ключ-система",
+    "scr.mode": "Тип ключ-системы",
+    "scr.mode.gui": "GUI",
+    "scr.mode.gui.d": "окно ввода ключа при запуске",
+    "scr.mode.load": "Без GUI",
+    "scr.mode.load.d": "строка key = 'ключ' перед лоадстрингом",
+    "scr.var": "Имя переменной ключа",
+    "scr.var.hint": "как в loadstring-режиме: key = 'ключ'",
+    "scr.save": "Сохранить",
+    "scr.saved": "Скрипт сохранён",
+    "scr.e.name": "Дай скрипту название.",
+    "scr.e.code": "Вставь Lua-код.",
+    "scr.e.keys": "Нужен хотя бы один активный ключ — создай в разделе «Ключи».",
+    "scr.e.var": "Имя переменной: латиница, цифры и _. Например: key",
+    "scr.keys.embedded": "Вшито активных ключей",
+    "scr.keys.update": "Обновить пейлоад с ключами",
+    "scr.updated": "обновлён",
+    "scr.open": "Открыть",
+    "scr.delete": "Удалить",
+    "scr.del.q": "Удалить скрипт <b>{0}</b>? Лоадстринги перестанут выдаваться.",
+    "scr.del.ok": "Скрипт удалён",
+    "scr.ls.inline": "Лоадстринг (инлайн, без хостинга)",
+    "scr.ls.hosted": "Лоадстринг (hosted)",
+    "scr.payload": "Пейлоад (.lua)",
+    "scr.payload.dl": "Скачать пейлоад",
+    "scr.payload.copy": "Копировать пейлоад",
+    "scr.regen": "Переобфусцировать",
+    "scr.regen.ok": "Пейлоад пересобран",
+    "scr.base": "Базовый URL пейлоадов",
+    "scr.base.ph": "https://user.github.io/repo/payloads/",
+    "scr.base.hint": "Куда ты выложишь скачанные .lua — для hosted-лоадстринга с game:HttpGet.",
+    "scr.base.save": "Сохранить URL",
+    "scr.base.ok": "Базовый URL сохранён",
+    "scr.copy": "Копировать",
+    "scr.ok.copy": "Лоадстринг скопирован",
+    "scr.mode.badge.gui": "gui",
+    "scr.mode.badge.load": "loadstring",
+    "scr.keysys.off": "без ключа",
+
+    "obf.title": "Обфускатор",
+    "obf.sub": "Бесплатный, работает локально. Вставь Lua — получи нечитаемую версию и лоадстринг.",
+    "obf.in": "Исходный код",
+    "obf.out": "Обфусцированный код",
+    "obf.run": "Обфусцировать",
+    "obf.opts": "Опции",
+    "obf.o1": "Переименование переменных",
+    "obf.o2": "Шифровка строк",
+    "obf.o3": "Мусорный код",
+    "obf.o4": "Слоёв упаковки",
+    "obf.empty": "Вставь код слева.",
+    "obf.stats": "было {0} символов → стало {1}",
+    "obf.ok": "Обфускация готова",
+    "obf.download": "Скачать .lua",
+    "obf.ls": "Лоадстринг из результата",
+    "obf.ls.copy": "Скопировать лоадстринг",
+
+    "profile.title": "Профиль",
+    "profile.sub": "Аккаунт, ключи и история операций.",
+    "profile.tab.acc": "Аккаунт",
+    "profile.tab.log": "История",
+    "profile.tab.danger": "Опасная зона",
+    "profile.acc.user": "Ник",
+    "profile.acc.created": "Аккаунт создан",
+    "profile.acc.keys": "Всего ключей",
+    "profile.acc.active": "Активных ключей",
+    "profile.acc.scripts": "Скриптов",
+    "profile.acc.obfs": "Обфускаций",
+    "profile.acc.lang": "Язык",
+    "profile.pw.title": "Смена пароля",
+    "profile.pw.old": "Текущий пароль",
+    "profile.pw.new": "Новый пароль",
+    "profile.pw.submit": "Сменить пароль",
+    "profile.pw.ok": "Пароль изменён",
+    "profile.pw.bad": "Неверный текущий пароль",
+    "profile.log.empty": "История пуста",
+    "profile.log.emptyd": "Действия со скриптами, ключами и аккаунтом появятся здесь.",
+    "profile.log.th.time": "Время",
+    "profile.log.th.event": "Событие",
+    "profile.log.th.data": "Данные",
+    "profile.log.clear": "Очистить историю",
+    "profile.del.title": "Удалить аккаунт",
+    "profile.del.d": "Вместе с аккаунтом удалятся скрипты, ключи и история. Отменить нельзя.",
+    "profile.del.btn": "Удалить аккаунт",
+    "profile.del.q": "Удалить аккаунт <b>{0}</b> со всеми скриптами и ключами?",
+    "profile.del.ok": "Аккаунт удалён",
+
+    "log.key.gen": "Ключ создан",
+    "log.key.revoke": "Ключ отозван",
+    "log.key.delete": "Ключ удалён",
+    "log.key.check": "Проверка ключа",
+    "log.obf": "Обфускация",
+    "log.auth.reg": "Регистрация",
+    "log.auth.login": "Вход",
+    "log.auth.logout": "Выход",
+    "log.auth.pw": "Смена пароля",
+    "log.loadstring": "Лоадстринг скопирован",
+    "log.scr.save": "Скрипт сохранён",
+    "log.scr.regen": "Пейлоад пересобран",
+    "log.scr.del": "Скрипт удалён",
+    "log.scr.base": "Базовый URL",
+
+    "common.copy": "Копировать",
+    "common.copied": "Скопировано",
+    "common.cancel": "Отмена",
+    "common.confirm": "Подтвердить",
+    "common.save": "Сохранить",
+    "common.close": "Закрыть",
+    "common.loading": "Загрузка…",
+    "common.login.need": "Войди, чтобы открыть этот раздел."
+  },
+
+  en: {
+    "brand": "luaweao",
+
+    "nav.home": "Home",
+    "nav.scripts": "Scripts",
+    "nav.keys": "Keys",
+    "nav.obf": "Obfuscator",
+    "nav.profile": "Profile",
+    "nav.login": "Log in",
+    "nav.register": "Sign up",
+    "nav.logout": "Log out",
+
+    "footer.note": "monochrome script hub · key system · obfuscator",
+
+    "home.badge": "key system · free obfuscator · loadstring",
+    "home.t1": "create.",
+    "home.t2": "obfuscate.",
+    "home.t3": "issue keys.",
+    "home.sub": "luaweao is a black-and-white hub: build a script, enable the key system (GUI or loadstring), run it through the free obfuscator and grab the ready loadstring.",
+    "home.cta1": "Create script",
+    "home.cta2": "My keys",
+    "home.cta3": "Obfuscator",
+
+    "home.stat1": "my scripts",
+    "home.stat2": "keys issued",
+    "home.stat3": "obfuscations",
+    "home.stat4": "uptime",
+
+    "home.f.title": "What's inside",
+    "home.f.sub": "Everything runs locally in the browser, in a single file.",
+    "home.f1.t": "Script builder",
+    "home.f1.d": "Name, code, key system: a toggle and two modes — a GUI key window or a loadstring with a key = 'key' line.",
+    "home.f2.t": "Free obfuscator",
+    "home.f2.d": "Variable renaming, string encryption, junk code and packing layers. Builds a loadstring from the result on the spot.",
+    "home.f3.t": "Key system",
+    "home.f3.d": "Keys like a3ie9sdl343tr4jr: expiry, purpose, revoke, verify. Active keys get baked into the script payload.",
+    "home.f4.t": "Accounts",
+    "home.f4.d": "Sign up and log in, activity log, password change. Data lives in localStorage — nothing leaves your device.",
+
+    "home.s.title": "How it works",
+    "home.s.sub": "Three steps from code to loadstring.",
+    "home.s1.t": "Create a script",
+    "home.s1.d": "Paste Lua code, give it a name, enable the key system and pick a mode: GUI or no GUI.",
+    "home.s2.t": "Obfuscation + keys",
+    "home.s2.d": "The code goes through the built-in free obfuscator; active keys are baked into the payload.",
+    "home.s3.t": "Grab the loadstring",
+    "home.s3.d": "Copy the inline loadstring or download the .lua payload and drop it next to your site on GitHub.",
+
+    "home.term.title": "loadstring sample",
+
+    "home.faq.title": "FAQ",
+    "home.faq1.q": "Is it free?",
+    "home.faq1.a": "Yes. The obfuscator is built-in and free, keys are unlimited, and the whole site is a single HTML file.",
+    "home.faq2.q": "GUI mode vs loadstring mode?",
+    "home.faq2.a": "GUI: a black-and-white key prompt window opens on launch. Loadstring: the user pastes key = 'key' before the loadstring — no window.",
+    "home.faq3.q": "Where do I put the payload?",
+    "home.faq3.a": "Download the .lua and drop it into your repo (or a pastebin). Set the base URL in settings and the site builds a hosted loadstring with game:HttpGet. The inline loadstring works with no hosting at all.",
+    "home.faq4.q": "Are keys checked on a server?",
+    "home.faq4.a": "There is no server — the active-key list is baked into the payload at build time and hidden by the obfuscator. Created new keys? Hit \"Refresh payload\".",
+    "home.faq5.q": "Where is the data stored?",
+    "home.faq5.a": "Accounts, scripts and keys live in your browser's localStorage. Passwords are SHA-256 with a per-user salt.",
+
+    "auth.login.title": "Welcome back",
+    "auth.login.sub": "Log in to manage scripts and keys.",
+    "auth.reg.title": "Create account",
+    "auth.reg.sub": "Two fields and you're in.",
+    "auth.user": "Username",
+    "auth.pass": "Password",
+    "auth.pass2": "Repeat password",
+    "auth.submit.login": "Log in",
+    "auth.submit.reg": "Sign up",
+    "auth.alt.login": "No account yet? <a href=\"#/register\">Create one</a>",
+    "auth.alt.reg": "Already registered? <a href=\"#/login\">Log in</a>",
+    "auth.or": "or",
+    "auth.e.user": "Enter a username (3+ characters).",
+    "auth.e.pass": "Password must be at least 6 characters.",
+    "auth.e.pass2": "Passwords don't match.",
+    "auth.e.taken": "That username is taken.",
+    "auth.e.bad": "Wrong username or password.",
+    "auth.e.len": "Username: 3–20 characters, no spaces.",
+    "auth.ok.reg": "Account created. Welcome, {0}!",
+    "auth.ok.login": "Welcome back, {0}!",
+    "auth.ok.logout": "You've been logged out.",
+
+    "keys.title": "Key system",
+    "keys.sub": "Generate, verify and revoke keys. Active keys get baked into script payloads.",
+    "keys.tab.gen": "Generate",
+    "keys.tab.list": "My keys",
+    "keys.tab.check": "Verify",
+
+    "keys.gen.len": "Key length",
+    "keys.gen.dur": "Duration",
+    "keys.gen.note": "Purpose (optional)",
+    "keys.gen.note.ph": "e.g. private script",
+    "keys.gen.count": "Amount",
+    "keys.gen.submit": "Generate",
+    "keys.gen.result": "Done",
+    "keys.gen.hint": "Key format — lowercase letters and digits, like a3ie9sdl343tr4jr.",
+    "keys.gen.copyall": "Copy all",
+
+    "keys.dur.1h": "1 hour",
+    "keys.dur.24h": "24 hours",
+    "keys.dur.7d": "7 days",
+    "keys.dur.30d": "30 days",
+    "keys.dur.forever": "Forever",
+
+    "keys.list.empty": "Nothing here yet",
+    "keys.list.emptyd": "Generate your first key — it will show up here.",
+    "keys.th.key": "Key",
+    "keys.th.note": "Purpose",
+    "keys.th.status": "Status",
+    "keys.th.exp": "Expires",
+    "keys.th.act": "Actions",
+    "keys.st.active": "active",
+    "keys.st.expired": "expired",
+    "keys.st.revoked": "revoked",
+    "keys.act.copy": "Copy",
+    "keys.act.revoke": "Revoke",
+    "keys.act.delete": "Delete",
+    "keys.revoke.q": "Revoke key <b class=\"mono\">{0}</b>? Payloads built after that won't accept it.",
+    "keys.ok.gen": "Created {0} key(s)",
+    "keys.ok.copy": "Key copied",
+    "keys.ok.revoke": "Key revoked",
+    "keys.ok.del": "Key deleted",
+    "keys.never": "never",
+
+    "keys.check.ph": "Paste a key to verify",
+    "keys.check.submit": "Verify",
+    "keys.check.valid": "Key is valid",
+    "keys.check.invalid": "Key not found",
+    "keys.check.expired": "Key expired",
+    "keys.check.revoked": "Key revoked",
+
+    "scr.title": "Scripts",
+    "scr.sub": "Create scripts, enable the key system and grab the loadstring.",
+    "scr.create": "Create script",
+    "scr.edit": "Edit",
+    "scr.list": "My scripts",
+    "scr.list.empty": "No scripts yet",
+    "scr.list.emptyd": "Create the first one — code, key system, loadstring.",
+    "scr.name": "Name",
+    "scr.name.ph": "e.g. my hub",
+    "scr.code": "Lua code",
+    "scr.code.ph": "print('hello')",
+    "scr.keysys": "Key system",
+    "scr.mode": "Key system type",
+    "scr.mode.gui": "GUI",
+    "scr.mode.gui.d": "key prompt window on launch",
+    "scr.mode.load": "No GUI",
+    "scr.mode.load.d": "key = 'key' line before the loadstring",
+    "scr.var": "Key variable name",
+    "scr.var.hint": "as in loadstring mode: key = 'key'",
+    "scr.save": "Save",
+    "scr.saved": "Script saved",
+    "scr.e.name": "Give the script a name.",
+    "scr.e.code": "Paste some Lua code.",
+    "scr.e.keys": "You need at least one active key — create one under Keys.",
+    "scr.e.var": "Variable name: letters, digits and _. E.g. key",
+    "scr.keys.embedded": "Active keys embedded",
+    "scr.keys.update": "Refresh payload with keys",
+    "scr.updated": "updated",
+    "scr.open": "Open",
+    "scr.delete": "Delete",
+    "scr.del.q": "Delete script <b>{0}</b>? Its loadstrings stop being issued.",
+    "scr.del.ok": "Script deleted",
+    "scr.ls.inline": "Loadstring (inline, no hosting)",
+    "scr.ls.hosted": "Loadstring (hosted)",
+    "scr.payload": "Payload (.lua)",
+    "scr.payload.dl": "Download payload",
+    "scr.payload.copy": "Copy payload",
+    "scr.regen": "Re-obfuscate",
+    "scr.regen.ok": "Payload rebuilt",
+    "scr.base": "Payload base URL",
+    "scr.base.ph": "https://user.github.io/repo/payloads/",
+    "scr.base.hint": "Where you'll upload the downloaded .lua files — for the hosted loadstring with game:HttpGet.",
+    "scr.base.save": "Save URL",
+    "scr.base.ok": "Base URL saved",
+    "scr.copy": "Copy",
+    "scr.ok.copy": "Loadstring copied",
+    "scr.mode.badge.gui": "gui",
+    "scr.mode.badge.load": "loadstring",
+    "scr.keysys.off": "no key",
+
+    "obf.title": "Obfuscator",
+    "obf.sub": "Free, runs locally. Paste Lua — get an unreadable version and a loadstring.",
+    "obf.in": "Source code",
+    "obf.out": "Obfuscated code",
+    "obf.run": "Obfuscate",
+    "obf.opts": "Options",
+    "obf.o1": "Rename variables",
+    "obf.o2": "Encrypt strings",
+    "obf.o3": "Junk code",
+    "obf.o4": "Packing layers",
+    "obf.empty": "Paste some code on the left.",
+    "obf.stats": "{0} chars in → {1} out",
+    "obf.ok": "Obfuscation done",
+    "obf.download": "Download .lua",
+    "obf.ls": "Loadstring from the result",
+    "obf.ls.copy": "Copy loadstring",
+
+    "profile.title": "Profile",
+    "profile.sub": "Account, keys and activity log.",
+    "profile.tab.acc": "Account",
+    "profile.tab.log": "Activity",
+    "profile.tab.danger": "Danger zone",
+    "profile.acc.user": "Username",
+    "profile.acc.created": "Account created",
+    "profile.acc.keys": "Total keys",
+    "profile.acc.active": "Active keys",
+    "profile.acc.scripts": "Scripts",
+    "profile.acc.obfs": "Obfuscations",
+    "profile.acc.lang": "Language",
+    "profile.pw.title": "Change password",
+    "profile.pw.old": "Current password",
+    "profile.pw.new": "New password",
+    "profile.pw.submit": "Change password",
+    "profile.pw.ok": "Password changed",
+    "profile.pw.bad": "Wrong current password",
+    "profile.log.empty": "Log is empty",
+    "profile.log.emptyd": "Script, key and account actions will appear here.",
+    "profile.log.th.time": "Time",
+    "profile.log.th.event": "Event",
+    "profile.log.th.data": "Details",
+    "profile.log.clear": "Clear log",
+    "profile.del.title": "Delete account",
+    "profile.del.d": "Deleting the account removes scripts, keys and history. This cannot be undone.",
+    "profile.del.btn": "Delete account",
+    "profile.del.q": "Delete account <b>{0}</b> with all scripts and keys?",
+    "profile.del.ok": "Account deleted",
+
+    "log.key.gen": "Key created",
+    "log.key.revoke": "Key revoked",
+    "log.key.delete": "Key deleted",
+    "log.key.check": "Key check",
+    "log.obf": "Obfuscation",
+    "log.auth.reg": "Sign up",
+    "log.auth.login": "Login",
+    "log.auth.logout": "Logout",
+    "log.auth.pw": "Password changed",
+    "log.loadstring": "Loadstring copied",
+    "log.scr.save": "Script saved",
+    "log.scr.regen": "Payload rebuilt",
+    "log.scr.del": "Script deleted",
+    "log.scr.base": "Base URL",
+
+    "common.copy": "Copy",
+    "common.copied": "Copied",
+    "common.cancel": "Cancel",
+    "common.confirm": "Confirm",
+    "common.save": "Save",
+    "common.close": "Close",
+    "common.loading": "Loading…",
+    "common.login.need": "Log in to open this section."
+  }
+};
+
+window.Lang = {
+  cur: "ru",
+  set(l) {
+    this.cur = (l === "en" || l === "ru") ? l : "ru";
+    try { localStorage.setItem("lw.lang", this.cur); } catch (e) {}
+    try { document.documentElement.lang = this.cur; } catch (e) {}
+  },
+  t(k, ...args) {
+    const dict = window.I18N[this.cur] || window.I18N.ru;
+    let s = dict[k] !== undefined ? dict[k] : (window.I18N.ru[k] !== undefined ? window.I18N.ru[k] : k);
+    args.forEach((a, i) => { s = s.split("{" + i + "}").join(a); });
+    return s;
+  }
+};
+
+(function () {
+  let saved = null;
+  try { saved = localStorage.getItem("lw.lang"); } catch (e) { saved = null; }
+  if (saved === "en" || saved === "ru") {
+    window.Lang.cur = saved;
+  } else {
+    const nav = (navigator.language || "ru").toLowerCase();
+    window.Lang.cur = nav.startsWith("ru") ? "ru" : "en";
+  }
+  try { document.documentElement.lang = window.Lang.cur; } catch (e) {}
+})();
+
+;
+/* ============================================================
+   luaweao — utilities: storage, ids, format, toasts, modal, clipboard
+   ============================================================ */
+(function () {
+  "use strict";
+
+  /* ---------- storage ----------
+     localStorage can be unavailable entirely (file://, sandboxed iframes,
+     blocked cookies), so there is an in-memory fallback: the site keeps
+     working for the session instead of throwing on first access. */
+  const NS = "luaweao.v1.";
+  const mem = new Map();
+  const Store = {
+    get(k, fallback) {
+      try {
+        const raw = localStorage.getItem(NS + k);
+        return raw === null ? (mem.has(k) ? mem.get(k) : fallback) : JSON.parse(raw);
+      } catch (e) {
+        return mem.has(k) ? mem.get(k) : fallback;
+      }
+    },
+    set(k, v) {
+      mem.set(k, v);
+      try { localStorage.setItem(NS + k, JSON.stringify(v)); } catch (e) {}
+      return v;
+    },
+    del(k) {
+      mem.delete(k);
+      try { localStorage.removeItem(NS + k); } catch (e) {}
+    }
+  };
+  window.Store = Store;
+
+  /* ---------- crypto-ish ---------- */
+  function rnd(n) {
+    const a = new Uint32Array(n);
+    const c = window.crypto || window.msCrypto;
+    if (c && typeof c.getRandomValues === "function") {
+      c.getRandomValues(a);
+    } else {
+      for (let i = 0; i < n; i++) a[i] = (Math.random() * 0x100000000) >>> 0;
+    }
+    return a;
+  }
+  window.rand = {
+    int(min, max) {
+      const r = rnd(1)[0];
+      return min + (r % (max - min + 1));
+    },
+    pick(arr) { return arr[this.int(0, arr.length - 1)]; },
+    hex(n) {
+      let s = "";
+      const r = rnd(Math.ceil(n / 8));
+      for (let i = 0; i < n; i++) s += (r[i >> 3] >> ((i & 7) * 4) & 15).toString(16);
+      return s;
+    },
+    bytes(n) { return Array.from(rnd(n), x => x & 255); }
+  };
+
+  /* sync fallback hash (used when SubtleCrypto is unavailable, e.g. file://) */
+  window.fastHash = function (str) {
+    let h1 = 0x811c9dc5, h2 = 0x1000193;
+    for (let i = 0; i < str.length; i++) {
+      const c = str.charCodeAt(i);
+      h1 = (h1 ^ c) >>> 0; h1 = Math.imul(h1, 16777619) >>> 0;
+      h2 = (h2 + c * (i + 7)) >>> 0; h2 = Math.imul(h2, 2246822519) >>> 0;
+    }
+    return ("00000000" + h1.toString(16)).slice(-8) + ("00000000" + h2.toString(16)).slice(-8);
+  };
+
+  /* sha-256 -> hex promise, falls back to fastHash without SubtleCrypto */
+  window.sha256 = function (str) {
+    const data = new TextEncoder().encode(str);
+    let p;
+    try {
+      const c = window.crypto || window.msCrypto;
+      p = c.subtle.digest("SHA-256", data)
+        .then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join(""));
+    } catch (e) {
+      return Promise.resolve(window.fastHash(str));
+    }
+    return p;
+  };
+  window.hashPass = function (pw, salt) {
+    return window.sha256(salt + "::" + pw + "::luaweao")
+      .catch(() => Promise.resolve(window.fastHash(salt + "::" + pw)));
+  };
+
+  /* ---------- format ---------- */
+  window.fmt = {
+    date(ts) {
+      if (!ts) return "—";
+      const d = new Date(ts);
+      const p = n => String(n).padStart(2, "0");
+      return p(d.getDate()) + "." + p(d.getMonth() + 1) + "." + d.getFullYear() + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+    },
+    until(ts) {
+      if (!ts) return window.Lang.t("keys.never");
+      const s = Math.floor((ts - Date.now()) / 1000);
+      if (s <= 0) return window.Lang.t("keys.st.expired");
+      const ru = window.Lang.cur === "ru";
+      const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60);
+      if (d > 0) return ru ? d + "д " + h + "ч" : d + "d " + h + "h";
+      if (h > 0) return ru ? h + "ч " + m + "м" : h + "h " + m + "m";
+      return ru ? m + " мин" : m + " min";
+    },
+    num(n) { return (n || 0).toLocaleString(window.Lang.cur === "ru" ? "ru-RU" : "en-US"); }
+  };
+
+  /* ---------- dom helpers ---------- */
+  window.el = function (tag, attrs, html) {
+    const n = document.createElement(tag);
+    if (attrs) for (const k in attrs) {
+      if (k === "class") n.className = attrs[k];
+      else if (k === "html") n.innerHTML = attrs[k];
+      else if (k.startsWith("on") && typeof attrs[k] === "function") n.addEventListener(k.slice(2), attrs[k]);
+      else if (attrs[k] !== null && attrs[k] !== undefined) n.setAttribute(k, attrs[k]);
+    }
+    if (html !== undefined) n.innerHTML = html;
+    return n;
+  };
+  window.esc = function (s) {
+    return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  };
+
+  /* ---------- clipboard ---------- */
+  window.copyText = function (text) {
+    const done = () => window.toast(window.Lang.t("common.copied"), true);
+    if (navigator.clipboard && window.isSecureContext) {
+      return navigator.clipboard.writeText(text).then(done).catch(() => fallback(text, done));
+    }
+    fallback(text, done);
+  };
+  function fallback(text, done) {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;top:-1000px;opacity:0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy"); done(); } catch (e) { window.toast("copy failed"); }
+    document.body.removeChild(ta);
+  }
+
+  /* ---------- toasts ---------- */
+  window.toast = function (msg, invert) {
+    const box = document.getElementById("toasts");
+    if (!box) return;
+    const t = el("div", { class: "toast" + (invert ? " inv" : "") }, window.esc(msg));
+    box.appendChild(t);
+    setTimeout(() => { t.style.opacity = "0"; t.style.transition = ".3s"; }, 2400);
+    setTimeout(() => t.remove(), 2800);
+  };
+
+  /* ---------- modal ---------- */
+  window.confirmBox = function (html, onYes, yesLabel) {
+    const root = document.getElementById("modalRoot");
+    root.innerHTML = "";
+    const bd = el("div", { class: "modal-bd" });
+    const m = el("div", { class: "modal" });
+    m.innerHTML = "<p>" + html + "</p>";
+    const acts = el("div", { class: "acts" });
+    const no = el("button", { class: "btn", onclick: close }, window.Lang.t("common.cancel"));
+    const yes = el("button", { class: "btn solid", onclick: () => { close(); onYes && onYes(); } }, yesLabel || window.Lang.t("common.confirm"));
+    acts.append(no, yes);
+    m.appendChild(acts);
+    bd.appendChild(m);
+    bd.addEventListener("click", e => { if (e.target === bd) close(); });
+    root.appendChild(bd);
+    function close() { root.innerHTML = ""; document.removeEventListener("keydown", esc); }
+    function esc(e) { if (e.key === "Escape") close(); }
+    document.addEventListener("keydown", esc);
+  };
+
+  window.download = function (filename, text) {
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 400);
+  };
+
+  /* ---------- syntax highlight (lua) ---------- */
+  const KW = /\b(local|function|end|if|then|else|elseif|for|while|do|return|break|repeat|until|and|or|not|in|nil|true|false|goto)\b/g;
+  window.hlLua = function (src) {
+    let s = window.esc(src);
+    s = s.replace(/(--\[\[[\s\S]*?\]\]|--[^\n]*)/g, '<span class="c-com">$1</span>');
+    s = s.replace(/(&quot;(?:[^&]|&(?!quot;))*?&quot;|'(?:[^'\\]|\\.)*')/g, '<span class="c-str">$1</span>');
+    s = s.replace(KW, '<span class="c-key">$1</span>');
+    return s;
+  };
+})();
+
+;
+/* ============================================================
+   luaweao — auth (local accounts, sha-256 + salt, sessions)
+   Static-site friendly: everything lives in localStorage.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  const users = () => Store.get("users", {});
+  const saveUsers = u => Store.set("users", u);
+
+  const SESSION_TTL = 1000 * 60 * 60 * 24 * 30; // 30 days
+
+  const Auth = {
+    exists(name) { return !!users()[String(name).toLowerCase()]; },
+
+    user() {
+      const s = Store.get("session", null);
+      if (!s || !s.token || !s.exp || s.exp < Date.now()) return null;
+      return users()[String(s.user).toLowerCase()] || null;
+    },
+
+    async register(name, pass) {
+      name = String(name || "").trim();
+      if (!/^[a-zA-Z0-9_.-]{3,20}$/.test(name)) return { ok: false, err: "auth.e.len" };
+      if (!pass || pass.length < 6) return { ok: false, err: "auth.e.pass" };
+      if (this.exists(name)) return { ok: false, err: "auth.e.taken" };
+
+      const salt = rand.hex(16);
+      const hash = await hashPass(pass, salt);
+      const all = users();
+      const user = {
+        id: "u_" + rand.hex(10),
+        name,
+        salt,
+        hash,
+        created: Date.now(),
+        stats: { obf: 0 },
+        log: []
+      };
+      all[name.toLowerCase()] = user;
+      saveUsers(all);
+      this._session(user);
+      this.log("auth.reg", user.name);
+      return { ok: true, user };
+    },
+
+    async login(name, pass) {
+      const u = users()[String(name || "").trim().toLowerCase()];
+      if (!u) return { ok: false, err: "auth.e.bad" };
+      const hash = await hashPass(pass, u.salt);
+      if (hash !== u.hash) return { ok: false, err: "auth.e.bad" };
+      this._session(u);
+      this.log("auth.login", u.name);
+      return { ok: true, user: u };
+    },
+
+    logout() {
+      const u = this.user();
+      Store.del("session");
+      if (u) this.log("auth.logout", u.name);
+    },
+
+    async changePassword(oldPass, newPass) {
+      const u = this.user();
+      if (!u) return { ok: false, err: "auth.e.bad" };
+      if (!newPass || newPass.length < 6) return { ok: false, err: "auth.e.pass" };
+      const hash = await hashPass(oldPass, u.salt);
+      if (hash !== u.hash) return { ok: false, err: "profile.pw.bad" };
+      const salt = rand.hex(16);
+      u.salt = salt;
+      u.hash = await hashPass(newPass, salt);
+      this._update(u);
+      this.log("auth.pw", u.name);
+      return { ok: true };
+    },
+
+    async deleteAccount() {
+      const u = this.user();
+      if (!u) return;
+      const all = users();
+      delete all[u.name.toLowerCase()];
+      saveUsers(all);
+      const ks = Store.get("keys", {});
+      delete ks[u.id];
+      Store.set("keys", ks);
+      const ss = Store.get("scripts", {});
+      delete ss[u.id];
+      Store.set("scripts", ss);
+      Store.del("session");
+    },
+
+    _session(u) {
+      Store.set("session", { user: u.name, token: rand.hex(24), exp: Date.now() + SESSION_TTL });
+    },
+    _update(u) {
+      const all = users();
+      all[u.name.toLowerCase()] = u;
+      saveUsers(all);
+    },
+
+    bumpObf() {
+      const u = this.user();
+      if (!u) return;
+      u.stats = u.stats || { obf: 0 };
+      u.stats.obf++;
+      this._update(u);
+    },
+
+    log(type, detail) {
+      const u = this.user();
+      if (!u) return;
+      u.log = u.log || [];
+      u.log.unshift({ t: Date.now(), type, detail: detail || "" });
+      if (u.log.length > 120) u.log.length = 120;
+      this._update(u);
+    },
+    clearLog() {
+      const u = this.user();
+      if (!u) return;
+      u.log = [];
+      this._update(u);
+    }
+  };
+
+  window.Auth = Auth;
+})();
+
+;
+/* ============================================================
+   luaweao — key system
+   keys look like: a3ie9sdl343tr4jr  (lowercase letters + digits)
+   ============================================================ */
+(function () {
+  "use strict";
+
+  const ALPHA = "abcdefghijklmnopqrstuvwxyz0123456789";
+  const DUR = {
+    "1h": 3600e3,
+    "24h": 86400e3,
+    "7d": 7 * 86400e3,
+    "30d": 30 * 86400e3,
+    "forever": 0
+  };
+
+  function allKeys() { return Store.get("keys", {}); }   // { userId: [key,...] }
+  function saveAll(m) { Store.set("keys", m); }
+
+  const Keys = {
+    DUR,
+
+    make(len) {
+      len = Math.min(32, Math.max(8, len || 16));
+      let s = "";
+      const r = rand.bytes(len);
+      for (let i = 0; i < len; i++) s += ALPHA[r[i] % ALPHA.length];
+      return s;
+    },
+
+    list() {
+      const u = Auth.user();
+      if (!u) return [];
+      return (allKeys()[u.id] || []).slice().sort((a, b) => b.created - a.created);
+    },
+
+    generate(opts) {
+      const u = Auth.user();
+      if (!u) return { ok: false, err: "auth.e.bad" };
+      opts = opts || {};
+      const n = Math.min(20, Math.max(1, opts.count || 1));
+      const len = opts.len || 16;
+      const durKey = DUR[opts.dur] !== undefined ? opts.dur : "forever";
+      const ms = DUR[durKey];
+      const map = allKeys();
+      const mine = map[u.id] || [];
+      const made = [];
+      const seen = new Set(mine.map(k => k.key));
+
+      for (let i = 0; i < n; i++) {
+        let k = this.make(len), guard = 0;
+        while (seen.has(k) && guard++ < 50) k = this.make(len);
+        seen.add(k);
+        const obj = {
+          key: k,
+          note: (opts.note || "").slice(0, 60),
+          created: Date.now(),
+          expires: ms ? Date.now() + ms : 0,
+          revoked: false,
+          len
+        };
+        mine.push(obj);
+        made.push(obj);
+      }
+      map[u.id] = mine;
+      saveAll(map);
+      made.forEach(k => Auth.log("key.gen", k.key));
+      return { ok: true, keys: made };
+    },
+
+    status(k) {
+      if (!k) return "invalid";
+      if (k.revoked) return "revoked";
+      if (k.expires && k.expires < Date.now()) return "expired";
+      return "active";
+    },
+
+    find(key) {
+      key = String(key || "").trim().toLowerCase();
+      if (!key) return null;
+      const map = allKeys();
+      for (const uid in map) {
+        const hit = (map[uid] || []).find(x => x.key === key);
+        if (hit) return hit;
+      }
+      return null;
+    },
+
+    validate(key) {
+      const k = this.find(key);
+      if (!k) return { ok: false, state: "invalid" };
+      const st = this.status(k);
+      return { ok: st === "active", state: st, key: k };
+    },
+
+    active() { return this.list().filter(k => this.status(k) === "active"); },
+    firstActive() { return this.active()[0] || null; },
+
+    revoke(key) {
+      const u = Auth.user();
+      if (!u) return false;
+      const map = allKeys();
+      const mine = map[u.id] || [];
+      const hit = mine.find(x => x.key === key);
+      if (!hit) return false;
+      hit.revoked = true;
+      saveAll(map);
+      Auth.log("key.revoke", key);
+      return true;
+    },
+
+    remove(key) {
+      const u = Auth.user();
+      if (!u) return false;
+      const map = allKeys();
+      map[u.id] = (map[u.id] || []).filter(x => x.key !== key);
+      saveAll(map);
+      Auth.log("key.delete", key);
+      return true;
+    },
+
+    check(key) {
+      const r = this.validate(key);
+      Auth.log("key.check", String(key || "").slice(0, 32) + " → " + r.state);
+      return r;
+    },
+
+    total() {
+      const u = Auth.user();
+      return u ? (allKeys()[u.id] || []).length : 0;
+    }
+  };
+
+  window.Keys = Keys;
+})();
+
+;
+/* ============================================================
+   luaweao — free Lua obfuscator (runs fully in the browser)
+
+   transforms:
+     1. variable / parameter / goto-label renaming
+     2. string-literal encryption (rolling additive cipher)
+     3. dead-code (junk) blocks
+     4. N layers of base64 packing behind a self-decoding loader
+
+   Output is standalone Lua: needs only loadstring/load, string.*,
+   math.floor — runs on Lua 5.1–5.4 and Luau.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  /* ================= helpers ================= */
+
+  const isDigit = c => c >= "0" && c <= "9";
+  const isAlpha = c => (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || c === "_";
+  const isAlnum = c => isAlpha(c) || isDigit(c);
+
+  const TWO_OPS = ["==", "~=", "<=", ">=", "<<", ">>", "//", "::", ".."];
+
+  function countEq(src, i) {
+    let k = 0;
+    while (src[i + k] === "=") k++;
+    return src[i + k] === "[" ? k : -1;
+  }
+
+  /* ================= tokenizer ================= */
+
+  function tokenize(src) {
+    const T = [];
+    let i = 0;
+    const n = src.length;
+
+    while (i < n) {
+      const c = src[i];
+
+      if (c === " " || c === "\t" || c === "\r" || c === "\n") { i++; continue; }
+
+      /* comments */
+      if (c === "-" && src[i + 1] === "-") {
+        if (src[i + 2] === "[") {
+          const eq = countEq(src, i + 3);
+          if (eq >= 0 && src[i + 3 + eq] === "[") {
+            const close = "]".repeat(eq + 1);
+            let j = src.indexOf(close, i + 4 + eq);
+            i = j < 0 ? n : j + close.length;
+            continue;
+          }
+        }
+        while (i < n && src[i] !== "\n") i++;
+        continue;
+      }
+
+      /* long strings  [[...]]  [=[...]=] */
+      if (c === "[") {
+        const eq = countEq(src, i + 1);
+        if (eq >= 0 && src[i + 1 + eq] === "[") {
+          const close = "]".repeat(eq + 1);
+          const end = src.indexOf(close, i + 2 + eq);
+          const stop = end < 0 ? n : end + close.length;
+          T.push({ t: "str", v: src.slice(i, stop) });
+          i = stop;
+          continue;
+        }
+      }
+
+      /* short strings */
+      if (c === '"' || c === "'") {
+        let j = i + 1;
+        while (j < n) {
+          if (src[j] === "\\") { j += 2; continue; }
+          if (src[j] === c) { j++; break; }
+          if (src[j] === "\n") break;
+          j++;
+        }
+        T.push({ t: "str", v: src.slice(i, Math.min(j, n)) });
+        i = j;
+        continue;
+      }
+
+      /* numbers */
+      if (isDigit(c) || (c === "." && isDigit(src[i + 1] || ""))) {
+        let j = i;
+        if (c === "0" && (src[i + 1] === "x" || src[i + 1] === "X")) {
+          j = i + 2;
+          while (j < n && /[0-9a-fA-F]/.test(src[j])) j++;
+        } else {
+          while (j < n && /[0-9.eE]/.test(src[j])) {
+            if ((src[j] === "e" || src[j] === "E") && (src[j + 1] === "+" || src[j + 1] === "-")) j++;
+            j++;
+          }
+        }
+        T.push({ t: "num", v: src.slice(i, j) });
+        i = j;
+        continue;
+      }
+
+      /* identifiers & keywords */
+      if (isAlpha(c)) {
+        let j = i;
+        while (j < n && isAlnum(src[j])) j++;
+        T.push({ t: "id", v: src.slice(i, j) });
+        i = j;
+        continue;
+      }
+
+      /* operators */
+      const three = src.substr(i, 3);
+      if (three === "...") { T.push({ t: "op", v: "..." }); i += 3; continue; }
+      const two = src.substr(i, 2);
+      if (TWO_OPS.indexOf(two) >= 0) { T.push({ t: "op", v: two }); i += 2; continue; }
+      T.push({ t: "op", v: c });
+      i++;
+    }
+    return T;
+  }
+
+  function emit(T) {
+    let out = "";
+    for (const tk of T) {
+      if (tk.t === "raw") { out += tk.v; continue; }
+      const p = out[out.length - 1] || "";
+      if (tk.t === "id") out += (p && isAlnum(p) ? " " : "") + tk.v;
+      else if (tk.t === "num") out += (p && (isAlnum(p) || p === "." || p === '"' || p === "'") ? " " : "") + tk.v;
+      else if (tk.t === "str") out += (out ? " " : "") + tk.v;
+      else {
+        const v = tk.v;
+        if (",;)}]".indexOf(v) >= 0) out += v;
+        else out += (out ? " " : "") + v;
+      }
+    }
+    return out;
+  }
+
+  /* ================= 1. renaming ================= */
+
+  function makeNameGen(prefix) {
+    const used = new Set();
+    return () => {
+      let s;
+      do { s = prefix + rand.hex(rand.int(4, 7)); } while (used.has(s));
+      used.add(s);
+      return s;
+    };
+  }
+
+  function rename(T) {
+    const vars = {}, labels = {};
+    const nv = makeNameGen("__lw"), nl = makeNameGen("__lg");
+    const putV = n => (vars[n] || (vars[n] = nv()));
+    const putL = n => (labels[n] || (labels[n] = nl()));
+    const isId = t => t && t.t === "id";
+    const isComma = t => t && t.t === "op" && t.v === ",";
+
+    /* Pass 1 — collect every locally-bound name.
+       NB: no `continue` inside the comma-lists below; falling out of the
+       inner loop is what lets the goto/label checks at the bottom run. */
+    let inLabel = false;   // ::name:: — the 2nd '::' must not open a new label
+    for (let i = 0; i < T.length; i++) {
+      const tk = T[i];
+      const v = tk.v;
+
+      if (isId(tk) && v === "local") {
+        let j = i + 1;
+        if (isId(T[j]) && T[j].v === "function") {
+          if (isId(T[j + 1])) putV(T[j + 1].v);
+        } else {
+          while (isId(T[j])) {
+            putV(T[j].v);
+            j++;
+            if (!isComma(T[j])) break;
+            j++;
+          }
+        }
+      } else if (isId(tk) && v === "function") {
+        let j = i + 1;
+        if (T[j] && T[j].t === "op" && T[j].v === "(") {
+          j++;
+          while (isId(T[j])) {
+            putV(T[j].v);
+            j++;
+            if (!isComma(T[j])) break;
+            j++;
+          }
+        }
+      } else if (isId(tk) && v === "for") {
+        let j = i + 1;
+        if (isId(T[j])) {
+          putV(T[j].v);
+          j++;
+          while (isComma(T[j]) && isId(T[j + 1])) { putV(T[j + 1].v); j += 2; }
+        }
+      }
+
+      if (tk.t === "op" && v === "::") {
+        if (!inLabel && isId(T[i + 1])) { putL(T[i + 1].v); inLabel = true; }
+        else inLabel = false;
+      } else if (isId(tk) && v === "goto" && isId(T[i + 1])) {
+        putL(T[i + 1].v);
+      }
+    }
+
+    /* Pass 2 — apply. Field names (`a.b`, `a:b`) are never touched. */
+    let inLabel2 = false;
+    for (let i = 0; i < T.length; i++) {
+      const tk = T[i];
+      if (tk.t === "op" && tk.v === "::") { inLabel2 = !inLabel2; continue; }
+      if (tk.t !== "id") continue;
+      const prev = T[i - 1];
+      const pv = prev ? prev.v : "";
+      if (prev && (pv === "." || pv === ":")) continue;
+      if (prev && isId(prev) && pv === "goto") { if (labels[tk.v]) tk.v = labels[tk.v]; continue; }
+      if (inLabel2 && prev && prev.t === "op" && pv === "::") {   // opening '::' only
+        if (labels[tk.v]) tk.v = labels[tk.v];
+        continue;
+      }
+      if (vars[tk.v]) tk.v = vars[tk.v];
+    }
+    return emit(T);
+  }
+
+  /* ================= 2. string encryption ================= */
+
+  function luaBytesLit(bytes) {
+    let s = '"';
+    for (const b of bytes) s += "\\" + b;
+    return s + '"';
+  }
+
+  const ESCAPES = { n: 10, t: 9, r: 13, a: 7, b: 8, f: 12, v: 11, "\\": 92, '"': 34, "'": 39 };
+
+  function encryptStrings(src) {
+    const T = tokenize(src);
+    const k = rand.int(3, 211);
+    const fn = "__lwd" + rand.hex(3);
+    let hits = 0;
+
+    for (const tk of T) {
+      if (tk.t !== "str") continue;
+      const raw = tk.v;
+      if (raw[0] !== '"' && raw[0] !== "'") continue;          // skip long strings
+      const body = raw.slice(1, -1);
+      if (body.length < 3 || body.indexOf("\n") >= 0) continue;
+      if (/\\z|\\x|\\u\{|\\[0-9]/.test(body)) continue;
+
+      const bytes = [];
+      for (let j = 0; j < body.length; j++) {
+        if (body[j] === "\\") {
+          const nx = body[j + 1];
+          if (ESCAPES[nx] !== undefined) { bytes.push(ESCAPES[nx]); j++; continue; }
+          bytes.push(String(nx).charCodeAt(0));
+          j++;
+          continue;
+        }
+        bytes.push(body.charCodeAt(j));
+      }
+
+      const enc = bytes.map((b, idx) => (b + k * (idx + 1)) % 256);
+      tk.t = "raw";
+      tk.v = fn + "(" + luaBytesLit(enc) + ")";
+      hits++;
+    }
+
+    if (!hits) return src;
+
+    const decl =
+      "local " + fn + " = function(s)\n" +
+      "  local o, n = {}, 0\n" +
+      "  for i = 1, #s do\n" +
+      "    n = n + 1\n" +
+      "    o[n] = (s:byte(i) - " + k + " * i) % 256\n" +
+      "  end\n" +
+      /* NB: an explicit branch — `a and a() or b()` would truncate the
+         multi-return of unpack to a single value inside the `or`. */
+      "  if table.unpack then\n" +
+      "    return (string.char(table.unpack(o, 1, n)))\n" +
+      "  end\n" +
+      "  return (string.char(unpack(o, 1, n)))\n" +
+      "end\n";
+
+    return decl + emit(T);
+  }
+
+  /* ================= 3. junk / dead code ================= */
+
+  function rndExpr() {
+    switch (rand.int(1, 4)) {
+      case 1: return String(rand.int(1, 9999));
+      case 2: return '"' + rand.hex(rand.int(4, 10)) + '"';
+      case 3: return "(#'" + rand.hex(rand.int(3, 6)) + "' ~= " + rand.int(2, 9) + ")";
+      default: return "((" + rand.int(2, 99) + " * " + rand.int(2, 99) + ") > 0)";
+    }
+  }
+
+  function junkBlock(lines) {
+    const out = ["if false then"];
+    for (let i = 0; i < lines; i++) {
+      out.push("  local " + "__j" + rand.hex(3) + " = " + rndExpr() +
+               "; local " + "__j" + rand.hex(3) + " = " + rndExpr());
+    }
+    out.push("end");
+    return out.join("\n");
+  }
+
+  const OPENERS = { "function": 1, "if": 1, "for": 1, "while": 1 };
+  /* tokens that mean "the statement isn't over yet" right after an `end` */
+  const CONTINUATIONS_ID = ["and", "or", "else", "elseif", "return", "then", "until", "in", "end"];
+  const CONTINUATIONS_OP = ",;.+-*/%^#<>=~";
+
+  function addJunk(src, maxBlocks) {
+    const T = tokenize(src);
+    const out = [];
+    let depth = 0, paren = 0, inserted = 0;
+
+    out.push({ t: "raw", v: junkBlock(rand.int(3, 6)) + ";\n" });
+
+    for (let i = 0; i < T.length; i++) {
+      const tk = T[i];
+      if (tk.t === "op" && (tk.v === "(" || tk.v === "{")) paren++;
+      if (tk.t === "op" && (tk.v === ")" || tk.v === "}")) paren = Math.max(0, paren - 1);
+      if (tk.t === "id" && OPENERS[tk.v]) depth++;
+      if (tk.t === "op" && tk.v === "do") depth++;
+      if (tk.t === "id" && tk.v === "repeat") depth++;
+      /* repeat..until has no `end`, so `until` closes the block */
+      if (tk.t === "id" && tk.v === "until" && depth > 0) depth--;
+
+      out.push(tk);
+
+      if (tk.t === "id" && tk.v === "end" && depth > 0) {
+        depth--;
+        if (depth !== 0 || paren !== 0 || inserted >= maxBlocks) continue;
+        if (rand.int(1, 100) > 60) continue;
+        const nx = T[i + 1];
+        const cont = nx && ((nx.t === "op" && (CONTINUATIONS_OP.indexOf(nx.v) >= 0 || nx.v === "(" || nx.v === "{")) ||
+                            (nx.t === "id" && CONTINUATIONS_ID.indexOf(nx.v) >= 0));
+        if (!cont) {
+          out.push({ t: "raw", v: "\n" + junkBlock(rand.int(1, 3)) + ";\n" });
+          inserted++;
+        }
+      }
+    }
+    return emit(out);
+  }
+
+  /* ================= 4. base64 packing ================= */
+
+  const B64STD = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+  function b64Encode(str, alpha) {
+    const bytes = [];
+    for (let i = 0; i < str.length; i++) {
+      const cp = str.codePointAt(i);
+      if (cp < 0x80) bytes.push(cp);
+      else if (cp < 0x800) bytes.push(0xc0 | (cp >> 6), 0x80 | (cp & 63));
+      else bytes.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 63), 0x80 | (cp & 63));
+    }
+    /* padding-free base64: the decoder infers the tail from the group size,
+       so the alphabet stays 64 chars and no '=' handling is needed. */
+    let out = "", i = 0;
+    while (i < bytes.length) {
+      const b0 = bytes[i++];
+      const b1 = i < bytes.length ? bytes[i++] : null;
+      const b2 = i < bytes.length ? bytes[i++] : null;
+      out += alpha[b0 >> 2];
+      out += alpha[((b0 & 3) << 4) | (b1 === null ? 0 : b1 >> 4)];
+      if (b1 !== null) out += alpha[((b1 & 15) << 2) | (b2 === null ? 0 : b2 >> 6)];
+      if (b2 !== null) out += alpha[b2 & 63];
+    }
+    return out;
+  }
+
+  function shuffledAlpha() {
+    const a = B64STD.split("");
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = rand.int(0, i);
+      const t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a.join("");
+  }
+
+  const vn = () => "l" + rand.hex(rand.int(3, 5)) + rand.pick(["I", "l", "1", "O"]);
+
+  /* one self-decoding layer: decodes DATA then either runs it or returns it.
+     padding-free base64; explicit byte counter (never relies on `#t` of a
+     table that has nil holes — that length is undefined in Lua). */
+  function layer(chunk, returnsString) {
+    const alpha = shuffledAlpha();
+    const A = vn(), DATA = vn(), L = vn(), I = vn(), F = vn(), P = vn(),
+          O = vn(), M = vn(), D = vn(), G = vn(), C = vn(), N = vn();
+    const data = b64Encode(chunk, alpha);
+
+    const lines = [
+      "local " + A + "='" + alpha + "'",
+      "local " + DATA + "='" + data + "'",
+      "local " + L + "={} for " + I + "=1,#" + A + " do " + L + "[" + A + ":sub(" + I + "," + I + ")]=" + I + "-1 end",
+      /* NOTE: the trailing () is wrapped in parens — in Lua
+         `local x = (function() ... end)()` does NOT truncate multiple
+         return values, which would leak extra results into later calls. */
+      "local " + P + "=((function()",
+      "local " + O + "," + M + "={},0",
+      "for " + D + "=1,#" + DATA + ",4 do",
+      "local " + G + "=" + DATA + ":sub(" + D + "," + D + "+3)",
+      "local " + C + "=0",
+      "for " + I + "=1,#" + G + " do " + C + "=" + C + "*64+" + L + "[" + G + ":sub(" + I + "," + I + ")] end",
+      "local " + N + "=#" + G,
+      /* pad the accumulator up to 24 bits so byte extraction is uniform */
+      "if " + N + "==2 then " + C + "=" + C + "*4096 elseif " + N + "==3 then " + C + "=" + C + "*64 end",
+      O + "[" + M + "+1]=math.floor(" + C + "/65536)",
+      "if " + N + ">=3 then " + O + "[" + M + "+2]=math.floor(" + C + "/256)%256 end",
+      "if " + N + ">=4 then " + O + "[" + M + "+3]=" + C + "%256 end",
+      M + "=" + M + "+(" + N + "-1)",
+      "end",
+      "local " + F + "=\"\"",
+      "for " + I + "=1," + M + " do " + F + "=" + F + "..string.char(" + O + "[" + I + "]) end",
+      "return " + F,
+      "end)());"      /* the ';' is mandatory: the next line starts with '('
+                           and Lua would otherwise parse it as a call suffix */
+    ];
+
+    lines.push(returnsString
+      ? "return (" + P + ")"
+      : "(loadstring or load)(" + P + ")()");
+
+    return lines.join("\n");
+  }
+
+  /* ================= public API ================= */
+
+  const Obf = {
+    /* source-level transforms on readable Lua */
+    source(src, opts) {
+      opts = opts || {};
+      let out = src;
+      if (opts.rename !== false) out = rename(tokenize(out));
+      if (opts.strings !== false) out = encryptStrings(out);
+      if (opts.junk !== false) out = addJunk(out, opts.junkBlocks === undefined ? 4 : opts.junkBlocks);
+      return out;
+    },
+
+    /* pack arbitrary code into N base64 layers.
+       every layer decodes its payload and EXECUTES it — returning a value
+       instead would be thrown away, because `load(chunk)()` drops results. */
+    wrap(code, layers) {
+      layers = Math.max(1, layers || 1);
+      let out = code;
+      for (let i = 0; i < layers; i++) out = layer(out, false);
+      return out;
+    },
+
+    /* full pipeline used by the UI */
+    run(src, opts) {
+      opts = opts || {};
+      const transformed = this.source(src, opts);
+      return this.wrap(transformed, opts.layers || 1);
+    },
+
+    b64Encode, shuffledAlpha, tokenize, emit
+  };
+
+  window.Obf = Obf;
+})();
+
+;
+/* ============================================================
+   luaweao — script store + payload builder
+
+   A script record: { id, name, code, keySystem, mode: "gui"|"load",
+                      varName, created, updated, keysEmbedded,
+                      payload, loadstring }
+
+   The payload wraps the owner's code with the key system (GUI window
+   or loadstring global), then runs through the free obfuscator.
+   Active keys are embedded at build time — there is no server.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  /* ---------- storage ---------- */
+
+  function allScripts() { return Store.get("scripts", {}); }
+  function saveAll(m) { Store.set("scripts", m); }
+
+  const Scripts = {
+    list() {
+      const u = Auth.user();
+      if (!u) return [];
+      return (allScripts()[u.id] || []).slice().sort((a, b) => b.updated - a.updated);
+    },
+    get(id) {
+      const u = Auth.user();
+      if (!u) return null;
+      return (allScripts()[u.id] || []).find(s => s.id === id) || null;
+    },
+    save(s) {
+      const u = Auth.user();
+      if (!u) return null;
+      const map = allScripts();
+      const mine = map[u.id] || [];
+      if (!s.id) s.id = "s_" + rand.hex(8);
+      const i = mine.findIndex(x => x.id === s.id);
+      if (i >= 0) mine[i] = s; else mine.push(s);
+      map[u.id] = mine;
+      saveAll(map);
+      return s;
+    },
+    remove(id) {
+      const u = Auth.user();
+      if (!u) return false;
+      const map = allScripts();
+      map[u.id] = (map[u.id] || []).filter(s => s.id !== id);
+      saveAll(map);
+      return true;
+    },
+    baseUrl() {
+      const u = Auth.user();
+      if (!u) return "";
+      return (Store.get("baseurl", {})[u.id] || "");
+    },
+    setBaseUrl(v) {
+      const u = Auth.user();
+      if (!u) return;
+      const m = Store.get("baseurl", {});
+      m[u.id] = v;
+      Store.set("baseurl", m);
+      Auth.log("scr.base", v);
+    }
+  };
+  window.Scripts = Scripts;
+
+  /* ---------- lua escaping ---------- */
+
+  function luaString(code) {
+    let s = '"';
+    for (let i = 0; i < code.length; i++) {
+      const c = code[i], cc = code.charCodeAt(i);
+      if (c === "\\") s += "\\\\";
+      else if (c === '"') s += '\\"';
+      else if (c === "\n") s += "\\n";
+      else if (c === "\r") s += "\\r";
+      else if (c === "\t") s += "\\t";
+      else if (cc < 32 || cc === 127) s += "\\" + cc;
+      else s += c;
+    }
+    return s + '"';
+  }
+
+  function keysTable(keys) {
+    return "{" + keys.map(k => '"' + k.key + '"').join(",") + "}";
+  }
+
+  /* indent owner code so it sits nicely inside wrappers */
+  function indent(code, pad) {
+    return code.split("\n").map(l => l.length ? pad + l : l).join("\n");
+  }
+
+  /* ---------- wrappers ---------- */
+
+  function noGuiWrapper(varName, keys, owner) {
+    return [
+      "local __key = " + varName,
+      "local __list = " + keysTable(keys),
+      "local __good = false",
+      "for __i = 1, #__list do",
+      "    if __list[__i] == __key then",
+      "        __good = true",
+      "    end",
+      "end",
+      "if not __good then",
+      "    return warn(\"[luaweao] LW-ERR invalid key\")",
+      "end",
+      indent(owner, "")
+    ].join("\n");
+  }
+
+  function guiWrapper(name, keys, owner) {
+    return [
+      'local __svc = game:GetService("Players")',
+      "local __me = __svc.LocalPlayer",
+      'local __core = Instance.new("ScreenGui")',
+      '__core.Name = "luaweao_key"',
+      "__core.ResetOnSpawn = false",
+      'local __frame = Instance.new("Frame")',
+      "__frame.Size = UDim2.fromOffset(330, 210)",
+      "__frame.AnchorPoint = Vector2.new(0.5, 0.5)",
+      "__frame.Position = UDim2.fromScale(0.5, 0.5)",
+      "__frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)",
+      "__frame.BorderColor3 = Color3.fromRGB(255, 255, 255)",
+      "__frame.BorderSizePixel = 1",
+      "__frame.Parent = __core",
+      'local __corner = Instance.new("UICorner")',
+      "__corner.CornerRadius = UDim.new(0, 10)",
+      "__corner.Parent = __frame",
+      'local __title = Instance.new("TextLabel")',
+      "__title.Size = UDim2.fromOffset(330, 46)",
+      "__title.BackgroundTransparency = 1",
+      '__title.Text = "luaweao | " .. ' + luaString(name),
+      "__title.TextColor3 = Color3.fromRGB(255, 255, 255)",
+      "__title.Font = Enum.Font.Code",
+      "__title.TextSize = 16",
+      "__title.Parent = __frame",
+      'local __box = Instance.new("TextBox")',
+      "__box.Size = UDim2.fromOffset(290, 40)",
+      "__box.Position = UDim2.fromOffset(20, 60)",
+      "__box.BackgroundColor3 = Color3.fromRGB(10, 10, 10)",
+      "__box.BorderColor3 = Color3.fromRGB(70, 70, 70)",
+      '__box.PlaceholderText = "key"',
+      "__box.PlaceholderColor3 = Color3.fromRGB(120, 120, 120)",
+      "__box.TextColor3 = Color3.fromRGB(255, 255, 255)",
+      "__box.Font = Enum.Font.Code",
+      "__box.TextSize = 14",
+      "__box.ClearTextOnFocus = false",
+      "__box.Parent = __frame",
+      'local __btn = Instance.new("TextButton")',
+      "__btn.Size = UDim2.fromOffset(290, 40)",
+      "__btn.Position = UDim2.fromOffset(20, 112)",
+      "__btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)",
+      "__btn.TextColor3 = Color3.fromRGB(0, 0, 0)",
+      '__btn.Text = "unlock"',
+      "__btn.Font = Enum.Font.Code",
+      "__btn.TextSize = 14",
+      "__btn.Parent = __frame",
+      'local __msg = Instance.new("TextLabel")',
+      "__msg.Size = UDim2.fromOffset(290, 26)",
+      "__msg.Position = UDim2.fromOffset(20, 158)",
+      "__msg.BackgroundTransparency = 1",
+      '__msg.Text = ""',
+      "__msg.TextColor3 = Color3.fromRGB(255, 255, 255)",
+      "__msg.Font = Enum.Font.Code",
+      "__msg.TextSize = 12",
+      "__msg.Parent = __frame",
+      "local __list = " + keysTable(keys),
+      "__btn.MouseButton1Click:Connect(function()",
+      "    local __entered = __box.Text",
+      "    local __good = false",
+      "    for __i = 1, #__list do",
+      "        if __list[__i] == __entered then",
+      "            __good = true",
+      "        end",
+      "    end",
+      "    if not __good then",
+      '        __msg.Text = "invalid key"',
+      "        return",
+      "    end",
+      "    __core:Destroy()",
+      indent(owner, "    "),
+      "end)",
+      '__core.Parent = __me:WaitForChild("PlayerGui")'
+    ].join("\n");
+  }
+
+  /* ---------- public API ---------- */
+
+  const Payload = {
+    luaString,
+
+    /* raw Lua source for a script record (before obfuscation) */
+    sourceFor(s, keys) {
+      if (!s.keySystem) return s.code;
+      if (s.mode === "gui") return guiWrapper(s.name, keys, s.code);
+      return noGuiWrapper(s.varName || "key", keys, s.code);
+    },
+
+    /* obfuscated payload */
+    build(s, keys, layers) {
+      const src = this.sourceFor(s, keys);
+      return window.Obf.run(src, { layers: layers || 2 });
+    },
+
+    /* the inline loadstring — works with no hosting at all */
+    inlineLoadstring(s, payload) {
+      const lines = [];
+      if (s.keySystem && s.mode === "load") {
+        lines.push((s.varName || "key") + " = '' -- " + (window.Lang.cur === "ru" ? "вставь свой ключ" : "paste your key"));
+      }
+      lines.push("loadstring(" + luaString(payload) + ")()");
+      return lines.join("\n");
+    },
+
+    /* hosted variant: payload uploaded to base + id.lua */
+    hostedLoadstring(s, base) {
+      let b = String(base || "").trim();
+      if (b && !b.endsWith("/")) b += "/";
+      const lines = [];
+      if (s.keySystem && s.mode === "load") {
+        lines.push((s.varName || "key") + " = '' -- " + (window.Lang.cur === "ru" ? "вставь свой ключ" : "paste your key"));
+      }
+      lines.push("loadstring(game:HttpGet('" + b + s.id + ".lua'))()");
+      return lines.join("\n");
+    }
+  };
+  window.Payload = Payload;
+})();
+
+;
+/* ============================================================
+   luaweao — router, navigation, shell
+   Hash routing only (#/keys/gen) so the single HTML file works
+   from file://, GitHub Pages and the sandboxed preview alike.
+   ============================================================ */
+(function () {
+  "use strict";
+
+  window.Pages = window.Pages || {};
+
+  const PUBLIC = ["/", "/login", "/register"];
+  const NAV = [
+    { path: "/", key: "nav.home" },
+    { path: "/scripts", key: "nav.scripts" },
+    { path: "/keys", key: "nav.keys" },
+    { path: "/obfuscator", key: "nav.obf" },
+    { path: "/profile", key: "nav.profile" }
+  ];
+
+  /* ---------- routing ---------- */
+
+  function currentPath() {
+    const h = location.hash.replace(/^#/, "");
+    if (h) return h.startsWith("/") ? h : "/" + h;
+    return "/";
+  }
+
+  function match(path) {
+    const seg = path.split("/").filter(Boolean);
+    if (seg.length === 0) return { page: "home", args: [] };
+    if (seg[0] === "login" && seg.length === 1) return { page: "login", args: [] };
+    if (seg[0] === "register" && seg.length === 1) return { page: "register", args: [] };
+    if (seg[0] === "scripts") {
+      if (seg.length === 1) return { page: "scripts", args: [] };
+      if (seg[1] === "new") return { page: "script-new", args: [] };
+      return { page: "script", args: [seg[1]] };
+    }
+    if (seg[0] === "keys") {
+      if (seg.length === 1) return { page: "keys", args: ["gen"] };
+      return { page: "keys", args: [seg[1]] };
+    }
+    if (seg[0] === "obfuscator") return { page: "obfuscator", args: [] };
+    if (seg[0] === "profile") {
+      if (seg.length === 1) return { page: "profile", args: ["acc"] };
+      return { page: "profile", args: [seg[1]] };
+    }
+    return { page: "404", args: [] };
+  }
+
+  function go(path) {
+    if (currentPath() === path) render();
+    else location.hash = path;
+  }
+  window.go = go;
+
+  /* ---------- chrome ---------- */
+
+  function paintNav(active) {
+    const box = document.getElementById("navLinks");
+    box.innerHTML = "";
+    NAV.forEach(n => {
+      const a = el("a", { href: "#" + n.path }, Lang.t(n.key));
+      if (active === n.path || (active !== "/" && n.path !== "/" && active.startsWith(n.path))) a.className = "active";
+      box.appendChild(a);
+    });
+
+    const auth = document.getElementById("navAuth");
+    auth.innerHTML = "";
+    const u = Auth.user();
+    if (u) {
+      auth.append(
+        el("a", { class: "btn ghost sm", href: "#/profile" }, '<span class="mono">' + esc(u.name) + "</span>"),
+        el("button", { class: "btn sm", onclick: doLogout }, Lang.t("nav.logout"))
+      );
+    } else {
+      auth.append(
+        el("a", { class: "btn sm", href: "#/login" }, Lang.t("nav.login")),
+        el("a", { class: "btn sm solid", href: "#/register" }, Lang.t("nav.register"))
+      );
+    }
+
+    const sw = document.getElementById("langSwitch");
+    sw.querySelectorAll("[data-lang-val]").forEach(s => {
+      s.classList.toggle("on", s.getAttribute("data-lang-val") === Lang.cur);
+    });
+  }
+
+  function doLogout() {
+    Auth.logout();
+    toast(Lang.t("auth.ok.logout"));
+    go("/");
+  }
+
+  function paintI18nStatic() {
+    document.querySelectorAll("[data-i18n]").forEach(n => {
+      n.innerHTML = Lang.t(n.getAttribute("data-i18n"));
+    });
+  }
+
+  /* ---------- render ---------- */
+
+  function render() {
+    const path = currentPath();
+    const route = match(path);
+    document.getElementById("navLinks").classList.remove("open");
+
+    paintNav(path);
+    paintI18nStatic();
+
+    const view = document.getElementById("view");
+    view.innerHTML = "";
+    try { window.scrollTo(0, 0); } catch (e) { /* older engines / jsdom */ }
+
+    const first = path.split("/").filter(Boolean)[0];
+    const rootPath = first ? "/" + first : "/";
+    if (PUBLIC.indexOf(rootPath) < 0 && !Auth.user()) {
+      Pages.login(view, [], { redirect: path });
+      return;
+    }
+
+    const fn = Pages[route.page] || Pages["404"];
+    const node = el("div", { class: "fade" });
+    view.appendChild(node);
+    fn(node, route.args, { redirect: null });
+  }
+
+  window.rerender = render;
+
+  /* ---------- shared page pieces ---------- */
+
+  window.pageHead = function (crumb, title, sub) {
+    return '<div class="pagehead"><div class="wrap">' +
+      '<div class="crumb">luaweao / <b>' + esc(crumb) + "</b></div>" +
+      "<h1>" + esc(title) + "</h1>" +
+      (sub ? "<p>" + esc(sub) + "</p>" : "") +
+      "</div></div>";
+  };
+
+  window.codeBlock = function (code, opts) {
+    opts = opts || {};
+    const id = "cb" + Math.random().toString(36).slice(2, 8);
+    const wrap = el("div", { class: "code" });
+    wrap.innerHTML =
+      '<div class="code-tb"><span>' + esc(opts.label || "lua") + "</span>" +
+      "<span>" + code.length.toLocaleString() + " chars</span></div>" +
+      '<pre id="' + id + '">' + window.hlLua(code) + "</pre>";
+    const btn = el("button", { class: "btn sm copy" }, Lang.t("common.copy"));
+    btn.addEventListener("click", () => copyText(code));
+    wrap.appendChild(btn);
+    return wrap;
+  };
+
+  window.lockedBox = function (title, text, btnLabel, href) {
+    const box = el("div", { class: "locked" });
+    box.innerHTML = "<h4>" + esc(title) + "</h4><p>" + esc(text) + "</p>";
+    if (btnLabel) box.appendChild(el("a", { class: "btn solid", href: href || "#" }, btnLabel));
+    return box;
+  };
+
+  /* ---------- boot ---------- */
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("langSwitch").addEventListener("click", () => {
+      Lang.set(Lang.cur === "ru" ? "en" : "ru");
+      render();
+    });
+    document.getElementById("burger").addEventListener("click", () => {
+      document.getElementById("navLinks").classList.toggle("open");
+    });
+    window.addEventListener("hashchange", render);
+    render();
+  });
+})();
+
+;
+/* ============================================================
+   luaweao — all pages
+   home / 404 / auth / keys / scripts (list, editor, detail) /
+   obfuscator / profile
+   ============================================================ */
+(function () {
+  "use strict";
+  window.Pages = window.Pages || {};
+  const t = k => Lang.t(k);
+
+  /* ================= home ================= */
+
+  Pages.home = function (root) {
+    const u = Auth.user();
+
+    root.innerHTML = `
+      <section class="hero">
+        <div class="hero-in">
+          <span class="hero-badge"><i class="dot"></i>${esc(t("home.badge"))}</span>
+          <h1 class="hero-title">
+            <span class="thin">${esc(t("home.t1"))}</span><br>
+            <span class="stroke">${esc(t("home.t2"))}</span><br>
+            ${esc(t("home.t3"))}
+          </h1>
+          <p class="hero-sub">${esc(t("home.sub"))}</p>
+          <div class="hero-cta">
+            <a class="btn solid lg" href="#/scripts/new">${esc(t("home.cta1"))}</a>
+            <a class="btn lg" href="#/keys">${esc(t("home.cta2"))}</a>
+            <a class="btn ghost lg" href="#/obfuscator">${esc(t("home.cta3"))}</a>
+          </div>
+
+          <div class="hero-stats" id="heroStats"></div>
+
+          <div class="term">
+            <div class="term-bar">
+              <span class="dots"><i></i><i></i><i></i></span>
+              <span>${esc(t("home.term.title"))}</span>
+              <span style="margin-left:auto">loadstring</span>
+            </div>
+            <div class="term-body" id="termBody"></div>
+          </div>
+        </div>
+      </section>
+
+      <div class="marquee"><div class="marquee-track" id="marquee"></div></div>
+
+      <section class="section">
+        <div class="wrap">
+          <div class="head">
+            <div class="eyebrow">features</div>
+            <h2>${esc(t("home.f.title"))}</h2>
+            <p>${esc(t("home.f.sub"))}</p>
+          </div>
+          <div class="grid g4" id="features"></div>
+        </div>
+      </section>
+
+      <section class="section tight">
+        <div class="wrap">
+          <div class="head">
+            <div class="eyebrow">workflow</div>
+            <h2>${esc(t("home.s.title"))}</h2>
+            <p>${esc(t("home.s.sub"))}</p>
+          </div>
+          <div class="steps">
+            <div class="step"><h4>${esc(t("home.s1.t"))}</h4><p>${esc(t("home.s1.d"))}</p></div>
+            <div class="step"><h4>${esc(t("home.s2.t"))}</h4><p>${esc(t("home.s2.d"))}</p></div>
+            <div class="step"><h4>${esc(t("home.s3.t"))}</h4><p>${esc(t("home.s3.d"))}</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section tight">
+        <div class="wrap">
+          <div class="head">
+            <div class="eyebrow">faq</div>
+            <h2>${esc(t("home.faq.title"))}</h2>
+          </div>
+          <div class="faq" id="faq"></div>
+        </div>
+      </section>
+    `;
+
+    /* stats */
+    const sb = root.querySelector("#heroStats");
+    [
+      [fmt.num(u ? Scripts.list().length : 0), t("home.stat1")],
+      [fmt.num(u ? Keys.list().length : 0), t("home.stat2")],
+      [fmt.num(u ? (u.stats && u.stats.obf || 0) : 0), t("home.stat3")],
+      ["99.9%", t("home.stat4")]
+    ].forEach(([v, l]) => {
+      sb.appendChild(el("div", { class: "stat" }, "<b>" + v + "</b><span>" + esc(l) + "</span>"));
+    });
+
+    /* live terminal: a real generated loadstring */
+    const termBody = root.querySelector("#termBody");
+    try {
+      const demo = {
+        id: "demo", name: "demo", code: "print('[luaweao] hello')",
+        keySystem: true, mode: "load", varName: "key"
+      };
+      const payload = Payload.build(demo, [{ key: "a3ie9sdl343tr4jr" }], 1);
+      termBody.innerHTML = window.hlLua(Payload.inlineLoadstring(demo, payload)) + '<span class="caret"></span>';
+    } catch (e) {
+      termBody.textContent = "-- obfuscator warm-up failed: " + e.message;
+    }
+
+    /* marquee */
+    const words = ["luaweao", "key system", "loadstring", "free obfuscator", "monochrome", "a3ie9sdl343tr4jr", "no noise"];
+    const line = words.map(w => "<span>" + esc(w) + "</span>").join("");
+    root.querySelector("#marquee").innerHTML = line + line;
+
+    /* features */
+    const fb = root.querySelector("#features");
+    [
+      ["01", t("home.f1.t"), t("home.f1.d")],
+      ["02", t("home.f2.t"), t("home.f2.d")],
+      ["03", t("home.f3.t"), t("home.f3.d")],
+      ["04", t("home.f4.t"), t("home.f4.d")]
+    ].forEach(([n, ti, d]) => {
+      fb.appendChild(el("div", { class: "card" },
+        '<div class="ic">' + n + "</div><h3>" + esc(ti) + "</h3><p>" + esc(d) + "</p>"));
+    });
+
+    /* faq */
+    const faq = root.querySelector("#faq");
+    for (let i = 1; i <= 5; i++) {
+      const d = el("details");
+      d.innerHTML = "<summary>" + esc(t("home.faq" + i + ".q")) + "</summary>" +
+        '<div class="a">' + esc(t("home.faq" + i + ".a")) + "</div>";
+      if (i === 1) d.open = true;
+      faq.appendChild(d);
+    }
+  };
+
+  Pages["404"] = function (root) {
+    root.innerHTML = `
+      <section class="section center">
+        <div class="wrap">
+          <div class="head" style="margin:60px 0 24px">
+            <div class="eyebrow">404</div>
+            <h2 style="font-size:clamp(48px,10vw,110px);margin:0">404</h2>
+            <p style="margin-top:12px">${esc(Lang.cur === "ru" ? "Такой страницы нет." : "No such page.")}</p>
+          </div>
+          <a class="btn solid" href="#/">${esc(t("nav.home"))}</a>
+        </div>
+      </section>`;
+  };
+
+  /* ================= auth ================= */
+
+  function authShell(root, inner) {
+    root.innerHTML = '<div class="auth-shell"><div class="auth-box" id="authBox"></div></div>';
+    const box = root.querySelector("#authBox");
+    box.innerHTML = inner;
+    return box;
+  }
+
+  function authError(box, key) {
+    const old = box.querySelector(".err");
+    if (old) old.remove();
+    const form = box.querySelector("form");
+    form.insertBefore(el("div", { class: "err" }, esc(t(key))), form.firstChild);
+  }
+
+  Pages.login = function (root, args, ctx) {
+    const redirect = (ctx && ctx.redirect) || null;
+    const box = authShell(root, `
+      <h1>${esc(t("auth.login.title"))}</h1>
+      <p class="sub">${esc(t("auth.login.sub"))}</p>
+      <form class="form">
+        <div class="field">
+          <label>${esc(t("auth.user"))}</label>
+          <input class="input" name="user" autocomplete="username" placeholder="username" required>
+        </div>
+        <div class="field">
+          <label>${esc(t("auth.pass"))}</label>
+          <input class="input" name="pass" type="password" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <button class="btn solid lg block" type="submit" data-label="${esc(t("auth.submit.login"))}">
+          ${esc(t("auth.submit.login"))}
+        </button>
+      </form>
+      <div class="auth-alt">${t("auth.alt.login")}</div>
+    `);
+
+    box.querySelector("form").addEventListener("submit", async e => {
+      e.preventDefault();
+      const btn = e.target.querySelector("button");
+      btn.disabled = true;
+      btn.textContent = t("common.loading");
+      const f = e.target;
+      const d = { user: f.querySelector('[name=user]').value, pass: f.querySelector('[name=pass]').value };
+      if (!d.user || d.user.trim().length < 3) { btn.disabled = false; btn.textContent = btn.dataset.label; return authError(box, "auth.e.user"); }
+      if (!d.pass || d.pass.length < 6) { btn.disabled = false; btn.textContent = btn.dataset.label; return authError(box, "auth.e.pass"); }
+      const r = await Auth.login(d.user, d.pass);
+      btn.disabled = false;
+      btn.textContent = btn.dataset.label;
+      if (!r.ok) return authError(box, r.err);
+      toast(t("auth.ok.login", r.user.name), true);
+      go(redirect || "/scripts");
+    });
+    box.querySelector("input").focus();
+  };
+
+  Pages.register = function (root) {
+    const box = authShell(root, `
+      <h1>${esc(t("auth.reg.title"))}</h1>
+      <p class="sub">${esc(t("auth.reg.sub"))}</p>
+      <form class="form">
+        <div class="field">
+          <label>${esc(t("auth.user"))}</label>
+          <input class="input" name="user" autocomplete="username" placeholder="username" required>
+          <span class="hint">3–20 · a–z 0–9 _ . -</span>
+        </div>
+        <div class="field">
+          <label>${esc(t("auth.pass"))}</label>
+          <input class="input" name="pass" type="password" autocomplete="new-password" placeholder="••••••••" required>
+        </div>
+        <div class="field">
+          <label>${esc(t("auth.pass2"))}</label>
+          <input class="input" name="pass2" type="password" autocomplete="new-password" placeholder="••••••••" required>
+        </div>
+        <button class="btn solid lg block" type="submit" data-label="${esc(t("auth.submit.reg"))}">
+          ${esc(t("auth.submit.reg"))}
+        </button>
+      </form>
+      <div class="auth-alt">${t("auth.alt.reg")}</div>
+    `);
+
+    box.querySelector("form").addEventListener("submit", async e => {
+      e.preventDefault();
+      const btn = e.target.querySelector("button");
+      btn.disabled = true;
+      btn.textContent = t("common.loading");
+      const f = e.target;
+      const d = { user: f.querySelector('[name=user]').value, pass: f.querySelector('[name=pass]').value, pass2: f.querySelector('[name=pass2]').value };
+      const done = () => { btn.disabled = false; btn.textContent = btn.dataset.label; };
+      if (!/^[a-zA-Z0-9_.-]{3,20}$/.test(String(d.user || "").trim())) { done(); return authError(box, "auth.e.len"); }
+      if (!d.pass || d.pass.length < 6) { done(); return authError(box, "auth.e.pass"); }
+      if (d.pass !== d.pass2) { done(); return authError(box, "auth.e.pass2"); }
+      const r = await Auth.register(d.user, d.pass);
+      done();
+      if (!r.ok) return authError(box, r.err);
+      toast(t("auth.ok.reg", r.user.name), true);
+      go("/scripts");
+    });
+    box.querySelector("input").focus();
+  };
+
+  /* ================= keys ================= */
+
+  const KEY_TABS = ["gen", "list", "check"];
+
+  Pages.keys = function (root, args) {
+    const tab = KEY_TABS.indexOf(args[0]) >= 0 ? args[0] : "gen";
+
+    root.innerHTML = pageHead("keys", t("keys.title"), t("keys.sub")) +
+      '<div class="wrap section tight" style="padding-top:26px">' +
+      '<div class="tabs" id="keyTabs"></div><div id="keyBody"></div></div>';
+
+    const tabs = root.querySelector("#keyTabs");
+    KEY_TABS.forEach(id => {
+      const b = el("button", { class: tab === id ? "on" : "" }, t("keys.tab." + id));
+      b.addEventListener("click", () => go("/keys/" + id));
+      tabs.appendChild(b);
+    });
+
+    const body = root.querySelector("#keyBody");
+    if (tab === "gen") keysGen(body);
+    else if (tab === "list") keysList(body);
+    else keysCheck(body);
+  };
+
+  function keysGen(body) {
+    body.innerHTML = "";
+    const panel = el("div", { class: "panel" });
+    panel.innerHTML = '<div class="panel-head"><h3>' + esc(t("keys.tab.gen")) + '</h3><span class="tiny muted mono">a-z0-9</span></div>';
+    const pbody = el("div", { class: "panel-body" });
+    panel.appendChild(pbody);
+    body.appendChild(panel);
+
+    const form = el("form", { class: "form" });
+    form.innerHTML = `
+      <div class="grid g3">
+        <div class="field">
+          <label>${esc(t("keys.gen.len"))}</label>
+          <select class="select" name="len">
+            <option value="12">12</option><option value="16" selected>16</option>
+            <option value="20">20</option><option value="24">24</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>${esc(t("keys.gen.dur"))}</label>
+          <select class="select" name="dur">
+            <option value="1h">${esc(t("keys.dur.1h"))}</option>
+            <option value="24h">${esc(t("keys.dur.24h"))}</option>
+            <option value="7d" selected>${esc(t("keys.dur.7d"))}</option>
+            <option value="30d">${esc(t("keys.dur.30d"))}</option>
+            <option value="forever">${esc(t("keys.dur.forever"))}</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>${esc(t("keys.gen.count"))}</label>
+          <select class="select" name="count">
+            <option value="1" selected>1</option><option value="3">3</option>
+            <option value="5">5</option><option value="10">10</option>
+          </select>
+        </div>
+      </div>
+      <div class="field">
+        <label>${esc(t("keys.gen.note"))}</label>
+        <input class="input" name="note" maxlength="60" placeholder="${esc(t("keys.gen.note.ph"))}">
+      </div>
+      <span class="hint">${esc(t("keys.gen.hint"))}</span>
+      <div class="row"><button class="btn solid" type="submit">${esc(t("keys.gen.submit"))}</button></div>
+    `;
+    pbody.appendChild(form);
+
+    const out = el("div", { class: "mt20 hidden" });
+    pbody.appendChild(out);
+
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const d = {};
+      form.querySelectorAll("select,input").forEach(i => { d[i.name] = i.value; });
+      const r = Keys.generate({ len: +d.len, dur: d.dur, count: +d.count, note: d.note });
+      if (!r.ok) return toast(t(r.err));
+      out.classList.remove("hidden");
+      out.innerHTML = "";
+      out.appendChild(el("div", { class: "row between mb16" },
+        '<span class="badge on">' + esc(t("keys.gen.result")) + "</span>"));
+      out.appendChild(el("button", { class: "btn sm mb16", onclick: () => copyText(r.keys.map(k => k.key).join("\n")) }, t("keys.gen.copyall")));
+      r.keys.forEach(k => {
+        out.appendChild(el("div", { class: "keybox mb8" },
+          "<code>" + k.key + "</code>"));
+        out.lastChild.appendChild(el("button", { class: "btn sm", onclick: () => copyText(k.key) }, t("keys.act.copy")));
+      });
+      toast(t("keys.ok.gen", r.keys.length), true);
+    });
+  }
+
+  function keysList(body) {
+    body.innerHTML = "";
+    const list = Keys.list();
+    if (!list.length) {
+      body.appendChild(el("div", { class: "empty" },
+        "<b>" + esc(t("keys.list.empty")) + "</b>" + esc(t("keys.list.emptyd"))));
+      return;
+    }
+    const panel = el("div", { class: "panel" });
+    panel.innerHTML = '<div class="panel-head"><h3>' + esc(t("keys.tab.list")) + "</h3>" +
+      '<span class="tiny muted mono">' + list.length + " · " + Keys.active().length + " " + esc(t("keys.st.active")) + "</span></div>";
+    const flush = el("div", { class: "panel-body flush" });
+    panel.appendChild(flush);
+    body.appendChild(panel);
+
+    const table = el("table", { class: "tbl" });
+    table.innerHTML = "<thead><tr>" +
+      "<th>" + esc(t("keys.th.key")) + "</th><th>" + esc(t("keys.th.note")) + "</th>" +
+      "<th>" + esc(t("keys.th.status")) + "</th><th>" + esc(t("keys.th.exp")) + "</th>" +
+      "<th>" + esc(t("keys.th.act")) + "</th></tr></thead>";
+    const tb = el("tbody");
+    table.appendChild(tb);
+    flush.appendChild(table);
+
+    list.forEach(k => {
+      const st = Keys.status(k);
+      const tr = el("tr");
+      tr.appendChild(el("td", { "data-l": t("keys.th.key"), class: "mono" }, k.key));
+      tr.appendChild(el("td", { "data-l": t("keys.th.note") }, '<span class="muted">' + esc(k.note || "—") + "</span>"));
+      tr.appendChild(el("td", { "data-l": t("keys.th.status") },
+        '<span class="badge ' + (st === "active" ? "on" : st === "revoked" ? "dead" : "off") + '">' + esc(t("keys.st." + st)) + "</span>"));
+      tr.appendChild(el("td", { "data-l": t("keys.th.exp"), class: "tiny muted" },
+        st === "active" ? esc(fmt.until(k.expires)) : esc(t("keys.st.expired"))));
+      const acts = el("div", { class: "row" }, "");
+      acts.appendChild(el("button", { class: "btn sm", onclick: () => copyText(k.key) }, t("keys.act.copy")));
+      if (st === "active") {
+        acts.appendChild(el("button", {
+          class: "btn sm danger",
+          onclick: () => confirmBox(t("keys.revoke.q", k.key), () => { Keys.revoke(k.key); toast(t("keys.ok.revoke")); rerender(); })
+        }, t("keys.act.revoke")));
+      }
+      acts.appendChild(el("button", {
+        class: "btn sm ghost",
+        onclick: () => confirmBox(t("keys.revoke.q", k.key), () => { Keys.remove(k.key); toast(t("keys.ok.del")); rerender(); }, t("keys.act.delete"))
+      }, t("keys.act.delete")));
+      const td = el("td", { "data-l": t("keys.th.act") });
+      td.appendChild(acts);
+      tr.appendChild(td);
+      tb.appendChild(tr);
+    });
+  }
+
+  function keysCheck(body) {
+    body.innerHTML = "";
+    const panel = el("div", { class: "panel" });
+    panel.innerHTML = '<div class="panel-head"><h3>' + esc(t("keys.tab.check")) + "</h3></div>";
+    const pbody = el("div", { class: "panel-body" });
+    panel.appendChild(pbody);
+    body.appendChild(panel);
+
+    const form = el("form", { class: "form" });
+    form.innerHTML = '<div class="field"><input class="input mono" name="key" placeholder="a3ie9sdl343tr4jr" autocomplete="off" spellcheck="false"></div>' +
+      '<div class="row"><button class="btn solid" type="submit">' + esc(t("keys.check.submit")) + "</button></div>";
+    pbody.appendChild(form);
+    const out = el("div", { class: "mt20" });
+    pbody.appendChild(out);
+
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      const val = form.querySelector("input").value.trim();
+      if (!val) return;
+      const r = Keys.check(val);
+      const msg = {
+        active: t("keys.check.valid"), expired: t("keys.check.expired"),
+        revoked: t("keys.check.revoked"), invalid: t("keys.check.invalid")
+      }[r.state];
+      out.innerHTML = "";
+      const card = el("div", { class: "card" });
+      card.innerHTML = '<div class="row between mb16"><span class="badge ' + (r.ok ? "on" : "dead") + '">' +
+        esc(msg) + '</span><span class="mono tiny muted">' + esc(val) + "</span></div>";
+      if (r.key) {
+        card.innerHTML +=
+          '<div class="kv"><span>' + esc(t("keys.th.note")) + "</span><b>" + esc(r.key.note || "—") + "</b></div>" +
+          '<div class="kv"><span>' + esc(t("keys.th.status")) + "</span><b>" + esc(t("keys.st." + r.state)) + "</b></div>";
+      }
+      out.appendChild(card);
+    });
+  }
+
+  /* ================= scripts: list ================= */
+
+  Pages.scripts = function (root) {
+    root.innerHTML = pageHead("scripts", t("scr.title"), t("scr.sub")) +
+      '<div class="wrap section tight" style="padding-top:26px">' +
+      '<div class="row between mb24"><div class="spacer"></div>' +
+      '<a class="btn solid" href="#/scripts/new">' + esc(t("scr.create")) + "</a></div>" +
+      '<div class="grid g3" id="scrGrid"></div></div>';
+
+    const grid = root.querySelector("#scrGrid");
+    const list = Scripts.list();
+    if (!list.length) {
+      grid.appendChild(el("div", { class: "empty", style: "grid-column:1/-1" },
+        "<b>" + esc(t("scr.list.empty")) + "</b>" + esc(t("scr.list.emptyd"))));
+      return;
+    }
+    list.forEach(s => {
+      const card = el("a", { class: "card", href: "#/scripts/" + s.id, style: "display:block" });
+      const badge = s.keySystem
+        ? '<span class="badge on">' + esc(t("scr.mode.badge." + (s.mode === "gui" ? "gui" : "load"))) + "</span>"
+        : '<span class="badge off">' + esc(t("scr.keysys.off")) + "</span>";
+      card.innerHTML =
+        '<div class="row between mb16"><div class="ic mono">' + esc((s.name || "?").slice(0, 2).toUpperCase()) + "</div>" + badge + "</div>" +
+        "<h3>" + esc(s.name) + "</h3>" +
+        "<p>" + esc((s.code || "").split("\n")[0].slice(0, 60)) + "</p>" +
+        '<div class="row between mt20"><span class="tiny muted mono">' + esc(t("scr.updated")) + " " + esc(fmt.date(s.updated)) + "</span>" +
+        '<span class="btn sm">' + esc(t("scr.open")) + "</span></div>";
+      grid.appendChild(card);
+    });
+  };
+
+  /* ================= scripts: editor ================= */
+
+  Pages["script-new"] = function (root, args) {
+    const editing = args[0] ? Scripts.get(args[0]) : null;
+    const s0 = editing || { name: "", code: "", keySystem: true, mode: "load", varName: "key" };
+
+    root.innerHTML = pageHead("scripts / " + (editing ? "edit" : "new"),
+      editing ? t("scr.edit") : t("scr.create"), t("scr.sub")) +
+      '<div class="wrap section tight" style="padding-top:26px;max-width:860px">' +
+      '<div class="panel"><div class="panel-body"><form class="form" id="scrForm">' +
+
+      '<div class="field"><label>' + esc(t("scr.name")) + "</label>" +
+      '<input class="input" name="name" maxlength="40" placeholder="' + esc(t("scr.name.ph")) + '" value="' + esc(s0.name) + '"></div>' +
+
+      '<div class="field"><label>' + esc(t("scr.code")) + "</label>" +
+      '<textarea class="input" name="code" spellcheck="false" placeholder="' + esc(t("scr.code.ph")) + '">' + esc(s0.code) + "</textarea></div>" +
+
+      '<label class="tgl"><input type="checkbox" name="keySystem" ' + (s0.keySystem ? "checked" : "") + "><i></i><span>" + esc(t("scr.keysys")) + "</span></label>" +
+
+      '<div id="keyOpts">' +
+      '<div class="field"><label>' + esc(t("scr.mode")) + "</label>" +
+      '<div class="seg" id="modeSeg">' +
+      '<button type="button" data-m="gui">' + esc(t("scr.mode.gui")) + "</button>" +
+      '<button type="button" data-m="load">' + esc(t("scr.mode.load")) + "</button>" +
+      "</div>" +
+      '<span class="hint" id="modeHint"></span></div>' +
+      '<div class="field" id="varField"><label>' + esc(t("scr.var")) + "</label>" +
+      '<input class="input mono" name="varName" maxlength="24" value="' + esc(s0.varName || "key") + '">' +
+      '<span class="hint">' + esc(t("scr.var.hint")) + "</span></div>" +
+      "</div>" +
+
+      '<div class="row"><button class="btn solid lg" type="submit">' + esc(t("scr.save")) + "</button></div>" +
+      "</form></div></div></div>";
+
+    const form = root.querySelector("#scrForm");
+    const keyOpts = root.querySelector("#keyOpts");
+    const varField = root.querySelector("#varField");
+    const modeHint = root.querySelector("#modeHint");
+    let mode = s0.mode === "gui" ? "gui" : "load";
+
+    function paintMode() {
+      root.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.m === mode));
+      modeHint.textContent = mode === "gui" ? t("scr.mode.gui.d") : t("scr.mode.load.d");
+      varField.classList.toggle("hidden", mode !== "load");
+      keyOpts.classList.toggle("hidden", !form.querySelector('[name=keySystem]').checked);
+    }
+    root.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => { mode = b.dataset.m; paintMode(); }));
+    form.querySelector('[name=keySystem]').addEventListener("change", paintMode);
+    paintMode();
+
+    form.addEventListener("submit", e => {
+      e.preventDefault();
+      /* NB: `form.name` is the form's own attribute — named controls must go
+         through querySelector / elements, otherwise you read "" instead. */
+      const name = form.querySelector('[name=name]').value.trim();
+      const code = form.querySelector('[name=code]').value;
+      if (!name) return toast(t("scr.e.name"));
+      if (!code.trim()) return toast(t("scr.e.code"));
+      const keySystem = form.querySelector('[name=keySystem]').checked;
+      if (mode === "load" && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(form.querySelector('[name=varName]').value.trim())) return toast(t("scr.e.var"));
+      const active = Keys.active();
+      if (keySystem && !active.length) {
+        toast(t("scr.e.keys"));
+        return go("/keys/gen");
+      }
+
+      const rec = {
+        id: editing ? editing.id : undefined,
+        name, code, keySystem,
+        mode: keySystem ? mode : "load",
+        varName: /^[A-Za-z_][A-Za-z0-9_]*$/.test((form.querySelector('[name=varName]').value || "").trim()) ? form.querySelector('[name=varName]').value.trim() : "key",
+        created: editing ? editing.created : Date.now(),
+        updated: Date.now()
+      };
+      const payload = Payload.build(rec, active, 2);
+      rec.payload = payload;
+      rec.keysEmbedded = active.length;
+      rec.loadstring = Payload.inlineLoadstring(rec, payload);
+      const base = Scripts.baseUrl();
+      rec.hosted = base ? Payload.hostedLoadstring(rec, base) : "";
+      Scripts.save(rec);
+      Auth.log("scr.save", name);
+      toast(t("scr.saved"), true);
+      go("/scripts/" + rec.id);
+    });
+  };
+
+  /* ================= scripts: detail ================= */
+
+  Pages.script = function (root, args) {
+    const s = Scripts.get(args[0]);
+    if (!s) { Pages["404"](root); return; }
+
+    root.innerHTML = pageHead("scripts / " + s.id, s.name, t("scr.sub")) +
+      '<div class="wrap section tight" style="padding-top:26px"><div class="grid g2">' +
+      '<div id="colL"></div><div id="colR"></div></div></div>';
+
+    const L = root.querySelector("#colL");
+    const R = root.querySelector("#colR");
+
+    /* settings panel */
+    const set = el("div", { class: "panel mb16" });
+    set.innerHTML = '<div class="panel-head"><h3>' + esc(s.name) + "</h3>" +
+      '<div class="tools" id="setTools"></div></div>';
+    const sb = el("div", { class: "panel-body" });
+    set.appendChild(sb);
+    L.appendChild(set);
+
+    sb.innerHTML =
+      '<div class="kv"><span>' + esc(t("scr.keysys")) + '</span><b>' + (s.keySystem ? esc(t("scr.mode." + (s.mode === "gui" ? "gui" : "load"))) : esc(t("scr.keysys.off"))) + "</b></div>" +
+      (s.keySystem && s.mode === "load" ? '<div class="kv"><span>' + esc(t("scr.var")) + '</span><b>' + esc(s.varName) + " = ''…</b></div>" : "") +
+      '<div class="kv"><span>' + esc(t("scr.keys.embedded")) + '</span><b>' + (s.keysEmbedded || 0) + "</b></div>" +
+      '<div class="kv"><span>' + esc(t("scr.updated")) + "</span><b>" + esc(fmt.date(s.updated)) + "</b></div>";
+
+    const tools = set.querySelector("#setTools");
+    tools.appendChild(el("a", { class: "btn sm", href: "#/scripts/new/" + s.id }, t("scr.edit")));
+    tools.appendChild(el("button", {
+      class: "btn sm",
+      onclick: () => {
+        const active = Keys.active();
+        if (s.keySystem && !active.length) { toast(t("scr.e.keys")); return go("/keys/gen"); }
+        s.payload = Payload.build(s, active, 2);
+        s.keysEmbedded = active.length;
+        s.updated = Date.now();
+        s.loadstring = Payload.inlineLoadstring(s, s.payload);
+        const base = Scripts.baseUrl();
+        s.hosted = base ? Payload.hostedLoadstring(s, base) : "";
+        Scripts.save(s);
+        Auth.log("scr.regen", s.name);
+        toast(t("scr.regen.ok"), true);
+        rerender();
+      }
+    }, t("scr.regen")));
+    tools.appendChild(el("button", {
+      class: "btn sm danger",
+      onclick: () => confirmBox(t("scr.del.q", s.name), () => { Scripts.remove(s.id); Auth.log("scr.del", s.name); toast(t("scr.del.ok")); go("/scripts"); })
+    }, t("scr.delete")));
+
+    /* base url */
+    const basePanel = el("div", { class: "panel mb16" });
+    basePanel.innerHTML = '<div class="panel-head"><h3>' + esc(t("scr.base")) + "</h3></div>";
+    const bb = el("div", { class: "panel-body" });
+    basePanel.appendChild(bb);
+    L.appendChild(basePanel);
+    bb.innerHTML = '<div class="field"><input class="input mono" id="baseIn" placeholder="' + esc(t("scr.base.ph")) + '" value="' + esc(Scripts.baseUrl()) + '"><span class="hint">' + esc(t("scr.base.hint")) + "</span></div>";
+    bb.appendChild(el("button", {
+      class: "btn sm mt14",
+      onclick: () => {
+        Scripts.setBaseUrl(root.querySelector("#baseIn").value.trim());
+        s.hosted = Scripts.baseUrl() ? Payload.hostedLoadstring(s, Scripts.baseUrl()) : "";
+        Scripts.save(s);
+        toast(t("scr.base.ok"), true);
+        rerender();
+      }
+    }, t("scr.base.save")));
+
+    /* payload */
+    const pp = el("div", { class: "panel" });
+    pp.innerHTML = '<div class="panel-head"><h3>' + esc(t("scr.payload")) + '</h3><div class="tools" id="pTools"></div></div>';
+    const pb = el("div", { class: "panel-body" });
+    pp.appendChild(pb);
+    L.appendChild(pp);
+    pb.appendChild(el("div", { class: "ok tiny mb16" }, (s.payload || "").length.toLocaleString() + " chars · " + esc(t("obf.o4")) + ": 2"));
+    const pTools = pp.querySelector("#pTools");
+    pTools.appendChild(el("button", { class: "btn sm", onclick: () => copyText(s.payload || "") }, t("scr.payload.copy")));
+    pTools.appendChild(el("button", { class: "btn sm ghost", onclick: () => download("luaweao-" + s.id + ".lua", s.payload || "") }, t("scr.payload.dl")));
+
+    /* loadstrings */
+    const ls = el("div", { class: "panel mb16" });
+    ls.innerHTML = '<div class="panel-head"><h3>' + esc(t("scr.ls.inline")) + "</h3></div>";
+    const lb = el("div", { class: "panel-body" });
+    ls.appendChild(lb);
+    R.appendChild(ls);
+    lb.appendChild(codeBlock(s.loadstring || "", { label: "loadstring" }));
+    lb.appendChild(el("button", { class: "btn sm mt14", onclick: () => { copyText(s.loadstring || ""); Auth.log("loadstring", s.name); } }, t("obf.ls.copy")));
+
+    if (s.hosted) {
+      const hs = el("div", { class: "panel mb16" });
+      hs.innerHTML = '<div class="panel-head"><h3>' + esc(t("scr.ls.hosted")) + "</h3></div>";
+      const hb = el("div", { class: "panel-body" });
+      hs.appendChild(hb);
+      R.appendChild(hs);
+      hb.appendChild(codeBlock(s.hosted, { label: "loadstring · HttpGet" }));
+      hb.appendChild(el("button", { class: "btn sm mt14", onclick: () => { copyText(s.hosted); Auth.log("loadstring", s.name + " (hosted)"); } }, t("obf.ls.copy")));
+    }
+
+    /* source */
+    const sp = el("div", { class: "panel" });
+    sp.innerHTML = '<div class="panel-head"><h3>' + esc(t("scr.code")) + "</h3></div>";
+    const spb = el("div", { class: "panel-body" });
+    sp.appendChild(spb);
+    R.appendChild(sp);
+    spb.appendChild(codeBlock(s.code, { label: s.name + ".lua" }));
+  };
+
+  /* ================= obfuscator ================= */
+
+  Pages.obfuscator = function (root) {
+    root.innerHTML = pageHead("obfuscator", t("obf.title"), t("obf.sub")) +
+      '<div class="wrap section tight" style="padding-top:26px"><div class="grid g2">' +
+
+      '<div class="panel"><div class="panel-head"><h3>' + esc(t("obf.in")) + "</h3></div>" +
+      '<div class="panel-body"><textarea class="input" id="srcIn" spellcheck="false" placeholder="print(&quot;hello&quot;)"></textarea>' +
+      '<div class="mt14" id="opts"></div>' +
+      '<div class="row mt14"><button class="btn solid" id="runBtn">' + esc(t("obf.run")) + "</button>" +
+      '<button class="btn" id="dlBtn">' + esc(t("obf.download")) + "</button></div></div></div>" +
+
+      '<div class="panel"><div class="panel-head"><h3>' + esc(t("obf.out")) + '</h3><span class="tiny muted" id="stats"></span></div>' +
+      '<div class="panel-body" id="outBody"><div class="empty">' + esc(t("obf.empty")) + "</div></div></div>" +
+
+      "</div></div>";
+
+    const srcIn = root.querySelector("#srcIn");
+    const outBody = root.querySelector("#outBody");
+    const stats = root.querySelector("#stats");
+    const opts = root.querySelector("#opts");
+
+    const checks = {};
+    [["rename", t("obf.o1"), true], ["strings", t("obf.o2"), true], ["junk", t("obf.o3"), true]].forEach(([id, label, def]) => {
+      const l = el("label", { class: "tgl", style: "display:flex;margin-bottom:9px" });
+      l.innerHTML = '<input type="checkbox" ' + (def ? "checked" : "") + '><i></i><span>' + esc(label) + "</span>";
+      opts.appendChild(l);
+      checks[id] = l.querySelector("input");
+    });
+    const layerField = el("div", { class: "field mt14" });
+    layerField.innerHTML = "<label>" + esc(t("obf.o4")) + '</label><select class="select"><option>1</option><option selected>2</option><option>3</option></select>';
+    opts.appendChild(layerField);
+    const layerSel = layerField.querySelector("select");
+
+    let last = "";
+
+    root.querySelector("#runBtn").addEventListener("click", () => {
+      const src = srcIn.value;
+      if (!src.trim()) return toast(t("obf.empty"));
+      const btn = root.querySelector("#runBtn");
+      btn.disabled = true;
+      btn.textContent = t("common.loading");
+      setTimeout(() => {
+        try {
+          last = Obf.run(src, {
+            rename: checks.rename.checked,
+            strings: checks.strings.checked,
+            junk: checks.junk.checked,
+            layers: +layerSel.value
+          });
+          outBody.innerHTML = "";
+          outBody.appendChild(codeBlock(last, { label: "obfuscated.lua" }));
+
+          /* the free obfuscator also builds a loadstring from its result */
+          const lsHead = el("div", { class: "row between mt20 mb8" });
+          lsHead.append(el("span", { class: "badge on" }, t("obf.ls")),
+            el("button", { class: "btn sm", onclick: () => { copyText("loadstring(" + Payload.luaString(last) + ")()"); Auth.log("loadstring", "obfuscator"); } }, t("obf.ls.copy")));
+          outBody.appendChild(lsHead);
+          outBody.appendChild(codeBlock("loadstring(" + Payload.luaString(last) + ")()", { label: "loadstring" }));
+
+          stats.textContent = t("obf.stats", src.length, last.length);
+          if (Auth.user()) { Auth.bumpObf(); Auth.log("obf", src.length + " → " + last.length); }
+          toast(t("obf.ok"), true);
+        } catch (e) {
+          outBody.innerHTML = '<div class="err">' + esc(String(e && e.message || e)) + "</div>";
+        } finally {
+          btn.disabled = false;
+          btn.textContent = t("obf.run");
+        }
+      }, 30);
+    });
+
+    root.querySelector("#dlBtn").addEventListener("click", () => {
+      if (!last) return toast(t("obf.empty"));
+      download("luaweao-obfuscated.lua", last);
+    });
+  };
+
+  /* ================= profile ================= */
+
+  const PROF_TABS = ["acc", "log", "danger"];
+
+  Pages.profile = function (root, args) {
+    const u = Auth.user();
+    if (!u) { Pages.login(root, [], { redirect: "/profile" }); return; }
+    const tab = PROF_TABS.indexOf(args[0]) >= 0 ? args[0] : "acc";
+
+    root.innerHTML = pageHead(u.name, t("profile.title"), t("profile.sub")) +
+      '<div class="wrap section tight" style="padding-top:26px">' +
+      '<div class="tabs" id="pTabs"></div><div id="pBody"></div></div>';
+
+    const tabs = root.querySelector("#pTabs");
+    PROF_TABS.forEach(id => {
+      const b = el("button", { class: tab === id ? "on" : "" }, t("profile.tab." + id));
+      b.addEventListener("click", () => go("/profile/" + id));
+      tabs.appendChild(b);
+    });
+
+    const body = root.querySelector("#pBody");
+    if (tab === "acc") profAcc(body, u);
+    else if (tab === "log") profLog(body, u);
+    else profDanger(body, u);
+  };
+
+  function profAcc(body, u) {
+    body.innerHTML = "";
+    const wrap = el("div", { class: "grid g2" });
+    body.appendChild(wrap);
+
+    const info = el("div", { class: "panel" });
+    info.innerHTML = '<div class="panel-head"><h3>' + esc(t("profile.tab.acc")) + "</h3></div>";
+    const ib = el("div", { class: "panel-body" });
+    info.appendChild(ib);
+    wrap.appendChild(info);
+
+    [
+      [t("profile.acc.user"), u.name],
+      [t("profile.acc.created"), fmt.date(u.created)],
+      [t("profile.acc.scripts"), String(Scripts.list().length)],
+      [t("profile.acc.keys"), String(Keys.list().length)],
+      [t("profile.acc.active"), String(Keys.active().length)],
+      [t("profile.acc.obfs"), String((u.stats && u.stats.obf) || 0)],
+      [t("profile.acc.lang"), Lang.cur.toUpperCase()]
+    ].forEach(([k, v]) => {
+      ib.appendChild(el("div", { class: "kv" }, "<span>" + esc(k) + "</span><b>" + esc(v) + "</b>"));
+    });
+    ib.appendChild(el("div", { class: "row mt20" },
+      '<a class="btn sm" href="#/scripts/new">' + esc(t("scr.create")) + "</a>" +
+      '<a class="btn sm" href="#/keys/gen">' + esc(t("keys.tab.gen")) + "</a>"));
+
+    const pw = el("div", { class: "panel" });
+    pw.innerHTML = '<div class="panel-head"><h3>' + esc(t("profile.pw.title")) + "</h3></div>";
+    const pb = el("div", { class: "panel-body" });
+    pw.appendChild(pb);
+    wrap.appendChild(pw);
+
+    const form = el("form", { class: "form" });
+    form.innerHTML =
+      '<div class="field"><label>' + esc(t("profile.pw.old")) + '</label><input class="input" type="password" name="old" autocomplete="current-password"></div>' +
+      '<div class="field"><label>' + esc(t("profile.pw.new")) + '</label><input class="input" type="password" name="new" autocomplete="new-password"></div>' +
+      '<div class="row"><button class="btn solid" type="submit">' + esc(t("profile.pw.submit")) + "</button></div><div></div>";
+    pb.appendChild(form);
+
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const msg = form.lastElementChild;
+      msg.innerHTML = "";
+      const btn = form.querySelector("button");
+      btn.disabled = true;
+      const r = await Auth.changePassword(form.querySelector('[name=old]').value, form.querySelector('[name=new]').value);
+      btn.disabled = false;
+      if (!r.ok) { msg.appendChild(el("div", { class: "err" }, esc(t(r.err)))); return; }
+      msg.appendChild(el("div", { class: "ok" }, esc(t("profile.pw.ok"))));
+      form.reset();
+      toast(t("profile.pw.ok"), true);
+    });
+  }
+
+  function profLog(body, u) {
+    body.innerHTML = "";
+    const entries = u.log || [];
+    const panel = el("div", { class: "panel" });
+    panel.innerHTML = '<div class="panel-head"><h3>' + esc(t("profile.tab.log")) + "</h3>" +
+      '<div class="tools"><button class="btn sm" id="clearLog">' + esc(t("profile.log.clear")) + "</button></div></div>";
+    const pb = el("div", { class: "panel-body flush" });
+    panel.appendChild(pb);
+    body.appendChild(panel);
+
+    if (!entries.length) {
+      pb.appendChild(el("div", { class: "empty" },
+        "<b>" + esc(t("profile.log.empty")) + "</b>" + esc(t("profile.log.emptyd"))));
+    } else {
+      const tbl = el("table", { class: "tbl" });
+      tbl.innerHTML = "<thead><tr><th>" + esc(t("profile.log.th.time")) + "</th><th>" + esc(t("profile.log.th.event")) + "</th><th>" + esc(t("profile.log.th.data")) + "</th></tr></thead>";
+      const tb = el("tbody");
+      tbl.appendChild(tb);
+      pb.appendChild(tbl);
+      entries.forEach(e => {
+        const label = t("log." + e.type) !== "log." + e.type ? t("log." + e.type) : e.type;
+        tb.appendChild(el("tr", {},
+          '<td class="tiny muted" data-l="' + esc(t("profile.log.th.time")) + '">' + esc(fmt.date(e.t)) + "</td>" +
+          '<td data-l="' + esc(t("profile.log.th.event")) + '"><span class="badge off">' + esc(label) + "</span></td>" +
+          '<td class="mono tiny muted" data-l="' + esc(t("profile.log.th.data")) + '">' + esc(e.detail || "—") + "</td>"));
+      });
+    }
+    panel.querySelector("#clearLog").addEventListener("click", () => {
+      Auth.clearLog();
+      toast(t("profile.log.clear"));
+      rerender();
+    });
+  }
+
+  function profDanger(body, u) {
+    body.innerHTML = "";
+    const panel = el("div", { class: "panel" });
+    panel.innerHTML = '<div class="panel-head"><h3>' + esc(t("profile.del.title")) + "</h3></div>";
+    const pb = el("div", { class: "panel-body" });
+    panel.appendChild(pb);
+    body.appendChild(panel);
+    pb.innerHTML = '<p class="muted" style="margin:0 0 16px">' + esc(t("profile.del.d")) + "</p>";
+    pb.appendChild(el("button", {
+      class: "btn danger",
+      onclick: () => confirmBox(t("profile.del.q", u.name), async () => {
+        await Auth.deleteAccount();
+        toast(t("profile.del.ok"));
+        go("/");
+      })
+    }, t("profile.del.btn")));
+  }
+})();
+
+</script>
+</body>
+</html>
