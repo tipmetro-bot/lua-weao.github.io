@@ -683,6 +683,10 @@ window.I18N = {
     "scr.sub": "Создавай скрипты, включай ключ-систему и забирай лоадстринг.",
     "scr.create": "Создать скрипт",
     "scr.edit": "Редактировать",
+    "scr.link.copy": "Ссылка",
+    "scr.link.ok": "Ссылка на скрипт скопирована",
+    "scr.locked": "Скрипт закрыт",
+    "scr.locked.sub": "Этот скрипт принадлежит другому аккаунту — доступ есть только у автора.",
     "scr.list": "Мои скрипты",
     "scr.list.empty": "Скриптов пока нет",
     "scr.list.emptyd": "Создай первый — код, ключ-система, лоадстринг.",
@@ -938,6 +942,10 @@ window.I18N = {
     "scr.sub": "Create scripts, enable the key system and grab the loadstring.",
     "scr.create": "Create script",
     "scr.edit": "Edit",
+    "scr.link.copy": "Link",
+    "scr.link.ok": "Script link copied",
+    "scr.locked": "Script locked",
+    "scr.locked.sub": "This script belongs to another account — only its author has access.",
     "scr.list": "My scripts",
     "scr.list.empty": "No scripts yet",
     "scr.list.emptyd": "Create the first one — code, key system, loadstring.",
@@ -2030,6 +2038,28 @@ window.Lang = {
   function allScripts() { return Store.get("scripts", {}); }
   function saveAll(m) { Store.set("scripts", m); }
 
+  /* id like a1s2d3fg6h5 — letter first, then 10 lowercase alnum */
+  function newId() {
+    const first = "abcdefghijklmnopqrstuvwxyz";
+    const rest = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const taken = new Set();
+    const map = allScripts();
+    for (const uid in map) (map[uid] || []).forEach(s => taken.add(s.id));
+    let id;
+    do {
+      id = first[rand.int(0, first.length - 1)];
+      for (let i = 1; i < 11; i++) id += rest[rand.int(0, rest.length - 1)];
+    } while (taken.has(id));
+    return id;
+  }
+
+  /* where the site itself is hosted — default base for .lua payloads */
+  function autoBase() {
+    const href = window.location.href.split("#")[0];
+    if (!/^https?:/i.test(href)) return "";       /* file:// — no hosting */
+    return href.slice(0, href.lastIndexOf("/") + 1);
+  }
+
   const Scripts = {
     list() {
       const u = Auth.user();
@@ -2041,12 +2071,18 @@ window.Lang = {
       if (!u) return null;
       return (allScripts()[u.id] || []).find(s => s.id === id) || null;
     },
+    /* does this id belong to ANY account on this device? (for locked vs 404) */
+    exists(id) {
+      const map = allScripts();
+      for (const uid in map) if ((map[uid] || []).some(s => s.id === id)) return true;
+      return false;
+    },
     save(s) {
       const u = Auth.user();
       if (!u) return null;
       const map = allScripts();
       const mine = map[u.id] || [];
-      if (!s.id) s.id = "s_" + rand.hex(8);
+      if (!s.id) s.id = newId();
       const i = mine.findIndex(x => x.id === s.id);
       if (i >= 0) mine[i] = s; else mine.push(s);
       map[u.id] = mine;
@@ -2061,10 +2097,12 @@ window.Lang = {
       saveAll(map);
       return true;
     },
+    autoBase,
     baseUrl() {
       const u = Auth.user();
       if (!u) return "";
-      return (Store.get("baseurl", {})[u.id] || "");
+      const stored = String(Store.get("baseurl", {})[u.id] || "").trim();
+      return stored || autoBase();
     },
     setBaseUrl(v) {
       const u = Auth.user();
@@ -2276,7 +2314,7 @@ window.Lang = {
     if (seg[0] === "register" && seg.length === 1) return { page: "register", args: [] };
     if (seg[0] === "scripts") {
       if (seg.length === 1) return { page: "scripts", args: [] };
-      if (seg[1] === "new") return { page: "script-new", args: [] };
+      if (seg[1] === "new") return { page: "script-new", args: seg[2] ? [seg[2]] : [] };
       return { page: "script", args: [seg[1]] };
     }
     if (seg[0] === "keys") {
@@ -2970,7 +3008,15 @@ window.Lang = {
 
   Pages.script = function (root, args) {
     const s = Scripts.get(args[0]);
-    if (!s) { Pages["404"](root); return; }
+    if (!s) {
+      /* id exists but belongs to another account → locked, not 404 */
+      if (Scripts.exists(args[0])) {
+        root.appendChild(lockedBox(t("scr.locked"), t("scr.locked.sub"), t("nav.scripts"), "#/scripts"));
+        return;
+      }
+      Pages["404"](root);
+      return;
+    }
 
     root.innerHTML = pageHead("scripts / " + s.id, s.name, t("scr.sub")) +
       '<div class="wrap section tight" style="padding-top:26px"><div class="grid g2">' +
@@ -2995,6 +3041,10 @@ window.Lang = {
 
     const tools = set.querySelector("#setTools");
     tools.appendChild(el("a", { class: "btn sm", href: "#/scripts/new/" + s.id }, t("scr.edit")));
+    tools.appendChild(el("button", {
+      class: "btn sm",
+      onclick: () => { copyText(location.href.split("#")[0] + "#/scripts/" + s.id); toast(t("scr.link.ok"), true); }
+    }, t("scr.link.copy")));
     tools.appendChild(el("button", {
       class: "btn sm",
       onclick: () => {
@@ -3044,7 +3094,7 @@ window.Lang = {
     pb.appendChild(el("div", { class: "ok tiny mb16" }, (s.payload || "").length.toLocaleString() + " chars · " + esc(t("obf.o4")) + ": 2"));
     const pTools = pp.querySelector("#pTools");
     pTools.appendChild(el("button", { class: "btn sm", onclick: () => copyText(s.payload || "") }, t("scr.payload.copy")));
-    pTools.appendChild(el("button", { class: "btn sm ghost", onclick: () => download("luaweao-" + s.id + ".lua", s.payload || "") }, t("scr.payload.dl")));
+    pTools.appendChild(el("button", { class: "btn sm ghost", onclick: () => download(s.id + ".lua", s.payload || "") }, t("scr.payload.dl")));
 
     /* loadstrings */
     const ls = el("div", { class: "panel mb16" });
@@ -3286,5 +3336,5 @@ window.Lang = {
 })();
 
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a45631d9186cd24f',t:'MTc5MTEzNzk2NA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
