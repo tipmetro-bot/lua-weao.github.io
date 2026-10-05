@@ -732,6 +732,29 @@ window.I18N = {
     "scr.payload.dl": "Скачать пейлоад",
     "scr.payload.copy": "Копировать пейлоад",
     "scr.regen": "Переобфусцировать",
+
+    "ks.title": "Ключ-сервис",
+    "ks.off": "Ключ-система выключена — включи её в настройках скрипта.",
+    "ks.link.hint": "Публичная ссылка: посетитель выполняет задания и получает ключ.",
+    "ks.copy": "Копировать",
+    "ks.link.copied": "Скопировано",
+    "ks.tasks": "Задания",
+    "ks.tasks.saved": "Задания сохранены",
+    "ks.task.add": "Задание",
+    "ks.task.title": "Название задания",
+    "ks.exp": "Ключ действует до: {0}",
+    "ks.rotate": "Новый ключ",
+    "ks.rotated": "Ключ обновлён. Ссылка изменилась — разошли новую.",
+
+    "ks.page.title": "Получение ключа",
+    "ks.page.script": "Скрипт",
+    "ks.page.tasks": "Выполни задания:",
+    "ks.page.open": "Открыть",
+    "ks.page.tasks.hint": "Выполни все задания, затем нажми кнопку ниже.",
+    "ks.page.done": "Я выполнил задания",
+    "ks.page.get": "Получить ключ",
+
+    "cool.wait": "Подожди {0} до следующего изменения",
     "scr.regen.ok": "Пейлоад пересобран",
     "scr.base": "Базовый URL пейлоадов",
     "scr.base.ph": "https://user.github.io/repo/payloads/",
@@ -998,6 +1021,29 @@ window.I18N = {
     "scr.payload.dl": "Download payload",
     "scr.payload.copy": "Copy payload",
     "scr.regen": "Re-obfuscate",
+
+    "ks.title": "Key service",
+    "ks.off": "Key system is off — enable it in the script settings.",
+    "ks.link.hint": "Public link: visitors complete the tasks and get the key.",
+    "ks.copy": "Copy",
+    "ks.link.copied": "Copied",
+    "ks.tasks": "Tasks",
+    "ks.tasks.saved": "Tasks saved",
+    "ks.task.add": "Task",
+    "ks.task.title": "Task title",
+    "ks.exp": "Key valid until: {0}",
+    "ks.rotate": "New key",
+    "ks.rotated": "Key rotated. The link changed — share the new one.",
+
+    "ks.page.title": "Get key",
+    "ks.page.script": "Script",
+    "ks.page.tasks": "Complete the tasks:",
+    "ks.page.open": "Open",
+    "ks.page.tasks.hint": "Finish every task, then press the button below.",
+    "ks.page.done": "I completed the tasks",
+    "ks.page.get": "Get key",
+
+    "cool.wait": "Wait {0} before the next change",
     "scr.regen.ok": "Payload rebuilt",
     "scr.base": "Payload base URL",
     "scr.base.ph": "https://user.github.io/repo/payloads/",
@@ -1284,6 +1330,26 @@ window.Lang = {
     document.addEventListener("keydown", esc);
   };
 
+  /* URL-safe base64 of a JSON value (UTF-8 safe) — for key-service links */
+  window.b64json = {
+    enc(obj) {
+      const json = JSON.stringify(obj);
+      const bytes = new TextEncoder().encode(json);
+      let bin = "";
+      for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    },
+    dec(str) {
+      try {
+        const b64 = String(str).replace(/-/g, "+").replace(/_/g, "/");
+        const bin = atob(b64 + "===".slice((b64.length + 3) % 4));
+        const bytes = new Uint8Array(bin.length);
+        for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+        return JSON.parse(new TextDecoder().decode(bytes));
+      } catch (e) { return null; }
+    }
+  };
+
   window.download = function (filename, text) {
     const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
     const a = document.createElement("a");
@@ -1568,6 +1634,44 @@ window.Lang = {
   };
 
   window.Keys = Keys;
+
+  /* ---------- 10-minute cooldowns (per account) ----------
+     "keys"  — after generating/revoking keys or rotating the key-service link
+     "regen" — after re-obfuscating a script payload                */
+  const Cool = {
+    MIN: 10 * 60 * 1000,
+    _mine() {
+      const u = Auth.user();
+      if (!u) return {};
+      return (Store.get("cool", {})[u.id] || {});
+    },
+    until(name) { return this._mine()[name] || 0; },
+    left(name) { return Math.max(0, this.until(name) - Date.now()); },
+    set(name) {
+      const u = Auth.user();
+      if (!u) return;
+      const all = Store.get("cool", {});
+      const mine = all[u.id] || {};
+      mine[name] = Date.now() + this.MIN;
+      all[u.id] = mine;
+      Store.set("cool", all);
+    },
+    clear(name) {
+      const u = Auth.user();
+      if (!u) return;
+      const all = Store.get("cool", {});
+      const mine = all[u.id] || {};
+      delete mine[name];
+      all[u.id] = mine;
+      Store.set("cool", all);
+    },
+    /* mm:ss */
+    fmt(name) {
+      const s = Math.ceil(this.left(name) / 1000);
+      return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }
+  };
+  window.Cool = Cool;
 })();
 
 ;
@@ -2477,7 +2581,7 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
 
   window.Pages = window.Pages || {};
 
-  const PUBLIC = ["/", "/login", "/register"];
+  const PUBLIC = ["/", "/login", "/register", "/key"];
   const NAV = [
     { path: "/", key: "nav.home" },
     { path: "/scripts", key: "nav.scripts" },
@@ -2508,6 +2612,7 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       if (seg.length === 1) return { page: "keys", args: ["gen"] };
       return { page: "keys", args: [seg[1]] };
     }
+    if (seg[0] === "key" && seg.length === 2) return { page: "keyshare", args: [seg[1]] };
     if (seg[0] === "obfuscator") return { page: "obfuscator", args: [] };
     if (seg[0] === "profile") {
       if (seg.length === 1) return { page: "profile", args: ["acc"] };
@@ -2650,7 +2755,7 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
 (function () {
   "use strict";
   window.Pages = window.Pages || {};
-  const t = k => Lang.t(k);
+  const t = (k, ...args) => Lang.t(k, ...args);
 
   /* ================= home ================= */
 
@@ -2964,12 +3069,18 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
     const out = el("div", { class: "mt20 hidden" });
     pbody.appendChild(out);
 
+    const genBtn = form.querySelector('button[type="submit"]');
+    cooldownButton(genBtn, "keys", t("keys.gen.submit"));
+
     form.addEventListener("submit", e => {
       e.preventDefault();
+      if (Cool.left("keys") > 0) { toast(t("cool.wait", Cool.fmt("keys"))); return; }
       const d = {};
       form.querySelectorAll("select,input").forEach(i => { d[i.name] = i.value; });
       const r = Keys.generate({ len: +d.len, dur: d.dur, count: +d.count, note: d.note });
       if (!r.ok) return toast(t(r.err));
+      Cool.set("keys");
+      cooldownButton(genBtn, "keys", t("keys.gen.submit"));
       out.classList.remove("hidden");
       out.innerHTML = "";
       out.appendChild(el("div", { class: "row between mb16" },
@@ -3022,7 +3133,12 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       if (st === "active") {
         acts.appendChild(el("button", {
           class: "btn sm danger",
-          onclick: () => confirmBox(t("keys.revoke.q", k.key), () => { Keys.revoke(k.key); toast(t("keys.ok.revoke")); rerender(); })
+          onclick: () => {
+            if (Cool.left("keys") > 0) { toast(t("cool.wait", Cool.fmt("keys"))); return; }
+            confirmBox(t("keys.revoke.q", k.key), () => {
+              Keys.revoke(k.key); Cool.set("keys"); toast(t("keys.ok.revoke")); rerender();
+            });
+          }
         }, t("keys.act.revoke")));
       }
       acts.appendChild(el("button", {
@@ -3103,6 +3219,171 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       grid.appendChild(card);
     });
   };
+
+  /* ================= key service =================
+     Every script with a key system gets a shareable public link
+     (#/key/<data>): visitors see the tasks, complete them and get
+     the key. The key is generated automatically; the owner manages
+     the task list. Rotating the key = 10-minute cooldown ("keys"). */
+
+  function ksLink(s) {
+    if (!s.ks) return "";
+    const data = b64json.enc({ id: s.id, name: s.name, tasks: s.ks.tasks || [], key: s.ks.key, exp: s.ks.exp });
+    return location.href.split("#")[0] + "#/key/" + data;
+  }
+
+  function ksEnsure(s) {
+    /* auto-generate the service key on first need */
+    if (s.ks && s.ks.key) return s.ks;
+    const made = Keys.generate({ len: 16, dur: "7d", count: 1, note: "ks:" + s.name });
+    if (!made.ok) return null;
+    s.ks = { key: made.keys[0].key, exp: made.keys[0].expires, tasks: [] };
+    Scripts.save(s);
+    return s.ks;
+  }
+
+  function ksPanel(parent, s) {
+    const p = el("div", { class: "panel mb16" });
+    p.innerHTML = '<div class="panel-head"><h3>' + esc(t("ks.title")) + '</h3><span class="badge on">auto</span></div>';
+    const b = el("div", { class: "panel-body" });
+    p.appendChild(b);
+    parent.appendChild(p);
+
+    if (!s.keySystem) {
+      b.innerHTML = '<div class="muted small">' + esc(t("ks.off")) + "</div>";
+      return;
+    }
+    const ks = ksEnsure(s);
+    if (!ks) return;
+
+    /* share link */
+    b.appendChild(el("div", { class: "small muted mb8" }, t("ks.link.hint")));
+    const row = el("div", { class: "row" });
+    const inp = el("input", { class: "input mono", readonly: "readonly", value: ksLink(s) });
+    row.appendChild(inp);
+    row.appendChild(el("button", {
+      class: "btn sm",
+      onclick: () => { copyText(ksLink(s)); toast(t("ks.link.copied"), true); }
+    }, t("ks.copy")));
+    b.appendChild(row);
+
+    /* tasks */
+    const tWrap = el("div", { class: "mt14" });
+    b.appendChild(tWrap);
+    tWrap.appendChild(el("div", { class: "row between mb8" },
+      el("b", { class: "small" }, t("ks.tasks")),
+      el("span", { class: "tiny muted" }, String((ks.tasks || []).length))));
+    (ks.tasks || []).forEach((task, i) => {
+      const r = el("div", { class: "row mb8" });
+      const ti = el("input", { class: "input", placeholder: t("ks.task.title"), value: task.t || "", maxlength: "60" });
+      const ui = el("input", { class: "input mono", placeholder: "https://", value: task.u || "", maxlength: "200" });
+      r.append(ti, ui, el("button", {
+        class: "btn sm danger",
+        onclick: () => { ks.tasks.splice(i, 1); Scripts.save(s); rerender(); }
+      }, "×"));
+      ti.addEventListener("input", () => { task.t = ti.value; });
+      ui.addEventListener("input", () => { task.u = ui.value; });
+      tWrap.appendChild(r);
+    });
+    const tBtns = el("div", { class: "row" });
+    tBtns.appendChild(el("button", {
+      class: "btn sm ghost",
+      onclick: () => { (ks.tasks = ks.tasks || []).push({ t: "", u: "" }); Scripts.save(s); rerender(); }
+    }, "+ " + t("ks.task.add")));
+    tBtns.appendChild(el("button", {
+      class: "btn sm",
+      onclick: () => {
+        ks.tasks = (ks.tasks || []).filter(x => (x.t || "").trim() || (x.u || "").trim());
+        Scripts.save(s);
+        toast(t("ks.tasks.saved"), true);
+        rerender();
+      }
+    }, t("common.save")));
+    tWrap.appendChild(tBtns);
+
+    /* rotate key (10-min cooldown) */
+    const rot = el("button", { class: "btn sm mt14" });
+    rot.addEventListener("click", () => {
+      if (Cool.left("keys") > 0) return;
+      const made = Keys.generate({ len: 16, dur: "7d", count: 1, note: "ks:" + s.name });
+      if (!made.ok) return;
+      ks.key = made.keys[0].key;
+      ks.exp = made.keys[0].expires;
+      s.updated = Date.now();
+      Scripts.save(s);
+      Cool.set("keys");
+      Auth.log("key.gen", "ks rotate");
+      toast(t("ks.rotated"), true);
+      rerender();
+    });
+    b.appendChild(rot);
+    cooldownButton(rot, "keys", t("ks.rotate"));
+
+    b.appendChild(el("div", { class: "hint mt14" }, t("ks.exp", fmt.date(ks.exp))));
+  }
+
+  /* ---------- public "get key" page (#/key/<data>) ---------- */
+
+  Pages.keyshare = function (root, args) {
+    const d = b64json.dec(args[0]);
+    if (!d || !d.key) { Pages["404"](root); return; }
+
+    root.innerHTML =
+      '<div class="wrap section" style="max-width:680px;padding-top:48px">' +
+      '<div class="panel"><div class="panel-head"><span class="footer-logo">luaweao</span>' +
+      '<span class="tiny muted mono">key service</span></div><div class="panel-body" id="ksBody"></div></div></div>';
+    const b = root.querySelector("#ksBody");
+
+    b.appendChild(el("h2", { class: "mb8" }, t("ks.page.title")));
+    b.appendChild(el("div", { class: "muted mb16" }, t("ks.page.script") + ": "));
+    b.appendChild(el("div", { class: "mono mb16" }, String(d.name || "")));
+
+    const tasks = (d.tasks || []).filter(x => (x.t || "").trim() || (x.u || "").trim());
+    if (tasks.length) {
+      b.appendChild(el("div", { class: "small muted mb8" }, t("ks.page.tasks")));
+      tasks.forEach((task, i) => {
+        const r = el("div", { class: "row between mb8" });
+        r.appendChild(el("span", {}, (i + 1) + ". " + (task.t || t("ks.task.title"))));
+        if (task.u) r.appendChild(el("a", { class: "btn sm", href: task.u, target: "_blank", rel: "noopener" }, t("ks.page.open")));
+        b.appendChild(r);
+      });
+      b.appendChild(el("div", { class: "hint mb16" }, t("ks.page.tasks.hint")));
+    }
+
+    const reveal = el("button", { class: "btn solid lg" }, tasks.length ? t("ks.page.done") : t("ks.page.get"));
+    b.appendChild(reveal);
+    reveal.addEventListener("click", () => {
+      reveal.remove();
+      const kb = el("div", { class: "keybox mt16" });
+      kb.innerHTML = '<span class="mono">' + esc(d.key) + "</span>";
+      const cp = el("button", { class: "btn sm", onclick: () => { copyText(d.key); toast(t("ks.link.copied"), true); } }, t("ks.copy"));
+      kb.appendChild(cp);
+      b.appendChild(kb);
+      if (d.exp) b.appendChild(el("div", { class: "hint mt8" }, t("ks.exp", fmt.date(d.exp))));
+      b.appendChild(el("div", { class: "hint mt8 mono" }, "key = '" + esc(d.key) + "'"));
+    });
+  };
+
+  /* ================= cooldowns UI ================= */
+
+  /* keep a button disabled with a live mm:ss countdown while a cooldown runs */
+  function cooldownButton(btn, coolName, label) {
+    let iv = 0;
+    function paint() {
+      const left = Cool.left(coolName);
+      if (left > 0) {
+        btn.disabled = true;
+        btn.textContent = label + " · " + Cool.fmt(coolName);
+      } else {
+        btn.disabled = false;
+        btn.textContent = label;
+      }
+      /* stop ticking once the cooldown is over or the button left the DOM */
+      if (left === 0 || !btn.isConnected) clearInterval(iv);
+    }
+    iv = setInterval(paint, 500);
+    paint();
+  }
 
   /* ================= engines ================= */
 
@@ -3224,10 +3505,21 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       if (!code.trim()) return toast(t("scr.e.code"));
       const keySystem = form.querySelector('[name=keySystem]').checked;
       if (mode === "load" && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(form.querySelector('[name=varName]').value.trim())) return toast(t("scr.e.var"));
-      const active = Keys.active();
+      let active = Keys.active();
       if (keySystem && !active.length) {
         toast(t("scr.e.keys"));
         return go("/keys/gen");
+      }
+
+      /* key service: the service key is generated automatically so it is
+         embedded into the payload right away */
+      let ks = editing && editing.ks && editing.ks.key ? editing.ks : null;
+      if (keySystem && !ks) {
+        const made = Keys.generate({ len: 16, dur: "7d", count: 1, note: "ks:" + name });
+        if (made.ok) {
+          ks = { key: made.keys[0].key, exp: made.keys[0].expires, tasks: [] };
+          active = Keys.active();
+        }
       }
 
       const rec = {
@@ -3236,6 +3528,7 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
         mode: keySystem ? mode : "load",
         varName: /^[A-Za-z_][A-Za-z0-9_]*$/.test((form.querySelector('[name=varName]').value || "").trim()) ? form.querySelector('[name=varName]').value.trim() : "key",
         engine, preset: engine === "prom" ? preset : undefined,
+        ks: keySystem ? ks : null,
         created: editing ? editing.created : Date.now(),
         updated: Date.now()
       };
@@ -3283,6 +3576,7 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
 
     const L = root.querySelector("#colL");
     const R = root.querySelector("#colR");
+    ksPanel(R, s);
 
     /* settings panel */
     const set = el("div", { class: "panel mb16" });
@@ -3304,34 +3598,35 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       class: "btn sm",
       onclick: () => { copyText(location.href.split("#")[0] + "#/scripts/" + s.id); toast(t("scr.link.ok"), true); }
     }, t("scr.link.copy")));
-    tools.appendChild(el("button", {
-      class: "btn sm",
-      onclick: async ev => {
-        const active = Keys.active();
-        if (s.keySystem && !active.length) { toast(t("scr.e.keys")); return go("/keys/gen"); }
-        const b = ev.currentTarget;
-        b.disabled = true;
-        b.textContent = t("common.loading");
-        let built;
-        try {
-          built = await buildPayload(s, active);
-        } finally {
-          b.disabled = false;
-          b.textContent = t("scr.regen");
-        }
-        s.payload = built.payload;
-        s.engineUsed = built.engine;
-        s.keysEmbedded = active.length;
-        s.updated = Date.now();
-        s.loadstring = Payload.inlineLoadstring(s, s.payload);
-        const base = Scripts.baseUrl();
-        s.hosted = base ? Payload.hostedLoadstring(s, base) : "";
-        Scripts.save(s);
-        Auth.log("scr.regen", s.name);
-        toast(t("scr.regen.ok"), true);
-        rerender();
+    const regenBtn = el("button", { class: "btn sm" });
+    cooldownButton(regenBtn, "regen", t("scr.regen"));
+    regenBtn.addEventListener("click", async ev => {
+      if (Cool.left("regen") > 0) return;
+      const active = Keys.active();
+      if (s.keySystem && !active.length) { toast(t("scr.e.keys")); return go("/keys/gen"); }
+      const b = ev.currentTarget;
+      b.disabled = true;
+      b.textContent = t("common.loading");
+      let built;
+      try {
+        built = await buildPayload(s, active);
+      } finally {
+        b.disabled = false;
       }
-    }, t("scr.regen")));
+      s.payload = built.payload;
+      s.engineUsed = built.engine;
+      s.keysEmbedded = active.length;
+      s.updated = Date.now();
+      s.loadstring = Payload.inlineLoadstring(s, s.payload);
+      const base = Scripts.baseUrl();
+      s.hosted = base ? Payload.hostedLoadstring(s, base) : "";
+      Scripts.save(s);
+      Cool.set("regen");
+      Auth.log("scr.regen", s.name);
+      toast(t("scr.regen.ok"), true);
+      rerender();
+    });
+    tools.appendChild(regenBtn);
     tools.appendChild(el("button", {
       class: "btn sm danger",
       onclick: () => confirmBox(t("scr.del.q", s.name), () => { Scripts.remove(s.id); Auth.log("scr.del", s.name); toast(t("scr.del.ok")); go("/scripts"); })
@@ -3645,5 +3940,5 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
 })();
 
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a458c1f2acbbd29d',t:'MTc5MTE2NDgzOA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
