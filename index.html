@@ -556,6 +556,7 @@ window.I18N = {
     "nav.home": "Главная",
     "nav.scripts": "Скрипты",
     "nav.keys": "Ключи",
+    "nav.ks": "Ключ-сервис",
     "nav.obf": "Обфускатор",
     "nav.profile": "Профиль",
     "nav.login": "Войти",
@@ -755,6 +756,23 @@ window.I18N = {
     "ks.page.get": "Получить ключ",
 
     "cool.wait": "Подожди {0} до следующего изменения",
+    "ks.hub.title": "Ключ-сервис",
+    "ks.hub.sub": "Ссылки с заданиями для своих и привязанных скриптов — страница генерирует ключи сама.",
+    "ks.hub.empty": "Пока пусто. ",
+    "ks.hub.emptyd": "Создай скрипт с ключ-системой или привяжи существующий ниже.",
+    "ks.hub.open": "Открыть скрипт",
+    "ks.attach": "Привязать скрипт",
+    "ks.attach.name": "Название",
+    "ks.attach.name.ph": "My External Hub",
+    "ks.attach.url": "Ссылка на скрипт (необязательно)",
+    "ks.attach.hint": "Если скрипт уже где-то есть — привяжи его: ключ-сервис создаст ссылку с заданиями и ключом, а ты вставишь этот ключ в свой скрипт.",
+    "ks.attach.btn": "Привязать",
+    "ks.attach.ok": "Скрипт привязан, ссылка готова",
+    "ks.opts.adblock": "Защита от адблока на странице ключа",
+    "ks.opts.showurl": "Показывать ссылку на скрипт после выдачи ключа",
+    "ks.adblock.msg": "Похоже, включён адблок. Отключи его и обнови страницу, чтобы получить ключ.",
+    "ks.page.script.open": "Скрипт",
+    "ks.extra.del.q": "Отвязать скрипт <b>{0}</b>? Его ссылка перестанет работать.",
     "scr.regen.ok": "Пейлоад пересобран",
     "scr.base": "Базовый URL пейлоадов",
     "scr.base.ph": "https://user.github.io/repo/payloads/",
@@ -845,6 +863,7 @@ window.I18N = {
     "nav.home": "Home",
     "nav.scripts": "Scripts",
     "nav.keys": "Keys",
+    "nav.ks": "Key service",
     "nav.obf": "Obfuscator",
     "nav.profile": "Profile",
     "nav.login": "Log in",
@@ -1044,6 +1063,23 @@ window.I18N = {
     "ks.page.get": "Get key",
 
     "cool.wait": "Wait {0} before the next change",
+    "ks.hub.title": "Key service",
+    "ks.hub.sub": "Task links for your own and attached scripts — the page generates keys by itself.",
+    "ks.hub.empty": "Nothing here yet. ",
+    "ks.hub.emptyd": "Create a script with a key system or attach an existing one below.",
+    "ks.hub.open": "Open script",
+    "ks.attach": "Attach a script",
+    "ks.attach.name": "Name",
+    "ks.attach.name.ph": "My External Hub",
+    "ks.attach.url": "Script URL (optional)",
+    "ks.attach.hint": "Already have a script somewhere? Attach it: the key service builds a link with tasks and a key — then paste that key into your script.",
+    "ks.attach.btn": "Attach",
+    "ks.attach.ok": "Script attached, link is ready",
+    "ks.opts.adblock": "Adblock protection on the key page",
+    "ks.opts.showurl": "Show the script link after the key is revealed",
+    "ks.adblock.msg": "Looks like an adblocker is on. Disable it and reload to get the key.",
+    "ks.page.script.open": "Script",
+    "ks.extra.del.q": "Unlink script <b>{0}</b>? Its link stops working.",
     "scr.regen.ok": "Payload rebuilt",
     "scr.base": "Payload base URL",
     "scr.base.ph": "https://user.github.io/repo/payloads/",
@@ -1632,6 +1668,43 @@ window.Lang = {
       return u ? (allKeys()[u.id] || []).length : 0;
     }
   };
+
+  /* attached (external) scripts for the key service — a script that lives
+     somewhere else gets tied to luaweao: the hub creates its link, tasks
+     and auto-key exactly like for built-in scripts */
+  function extraMap() { return Store.get("ksextra", {}); }
+  const Extra = {
+    list() {
+      const u = Auth.user();
+      if (!u) return [];
+      return (extraMap()[u.id] || []).slice();
+    },
+    write(list) {
+      const u = Auth.user();
+      if (!u) return;
+      const m = extraMap();
+      m[u.id] = list;
+      Store.set("ksextra", m);
+    },
+    add(name, url) {
+      const list = this.list();
+      const rec = {
+        id: "x" + rand.hex(10),
+        name: String(name || "").slice(0, 40),
+        url: String(url || "").slice(0, 200),
+        ks: null,
+        opts: { adblock: true, showurl: true },
+        updated: Date.now()
+      };
+      const made = Keys.generate({ len: 16, dur: "7d", count: 1, note: "ks:" + rec.name });
+      if (made.ok) rec.ks = { key: made.keys[0].key, exp: made.keys[0].expires, tasks: [] };
+      list.push(rec);
+      this.write(list);
+      return rec;
+    },
+    remove(id) { this.write(this.list().filter(x => x.id !== id)); }
+  };
+  window.Extra = Extra;
 
   window.Keys = Keys;
 
@@ -2434,7 +2507,13 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
 
   /* ---------- wrappers ---------- */
 
-  function noGuiWrapper(varName, keys, owner) {
+  function noGuiWrapper(varName, keys, owner, link) {
+    const bad = [
+      "if not __good then",
+      "    warn(\"[luaweao] LW-ERR invalid key\")"
+    ];
+    if (link) bad.push("    print(\"[luaweao] get key: \" .. " + luaString(link) + ")");
+    bad.push("    return", "end");
     return [
       "local __key = " + varName,
       "local __list = " + keysTable(keys),
@@ -2443,15 +2522,11 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       "    if __list[__i] == __key then",
       "        __good = true",
       "    end",
-      "end",
-      "if not __good then",
-      "    return warn(\"[luaweao] LW-ERR invalid key\")",
-      "end",
-      indent(owner, "")
-    ].join("\n");
+      "end"
+    ].concat(bad, [indent(owner, "")]).join("\n");
   }
 
-  function guiWrapper(name, keys, owner) {
+  function guiWrapper(name, keys, owner, link) {
     return [
       'local __svc = game:GetService("Players")',
       "local __me = __svc.LocalPlayer",
@@ -2518,6 +2593,7 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       "    end",
       "    if not __good then",
       '        __msg.Text = "invalid key"',
+      (link ? "        print(\"[luaweao] get key: \" .. " + luaString(link) + ")" : '        warn("[luaweao] LW-ERR invalid key")'),
       "        return",
       "    end",
       "    __core:Destroy()",
@@ -2533,10 +2609,10 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
     luaString,
 
     /* raw Lua source for a script record (before obfuscation) */
-    sourceFor(s, keys) {
+    sourceFor(s, keys, link) {
       if (!s.keySystem) return s.code;
-      if (s.mode === "gui") return guiWrapper(s.name, keys, s.code);
-      return noGuiWrapper(s.varName || "key", keys, s.code);
+      if (s.mode === "gui") return guiWrapper(s.name, keys, s.code, link);
+      return noGuiWrapper(s.varName || "key", keys, s.code, link);
     },
 
     /* obfuscated payload */
@@ -2586,6 +2662,7 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
     { path: "/", key: "nav.home" },
     { path: "/scripts", key: "nav.scripts" },
     { path: "/keys", key: "nav.keys" },
+    { path: "/ks", key: "nav.ks" },
     { path: "/obfuscator", key: "nav.obf" },
     { path: "/profile", key: "nav.profile" }
   ];
@@ -2612,6 +2689,7 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       if (seg.length === 1) return { page: "keys", args: ["gen"] };
       return { page: "keys", args: [seg[1]] };
     }
+    if (seg[0] === "ks") return { page: "ks", args: [] };
     if (seg[0] === "key" && seg.length === 2) return { page: "keyshare", args: [seg[1]] };
     if (seg[0] === "obfuscator") return { page: "obfuscator", args: [] };
     if (seg[0] === "profile") {
@@ -3226,46 +3304,102 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
      the key. The key is generated automatically; the owner manages
      the task list. Rotating the key = 10-minute cooldown ("keys"). */
 
-  function ksLink(s) {
-    if (!s.ks) return "";
-    const data = b64json.enc({ id: s.id, name: s.name, tasks: s.ks.tasks || [], key: s.ks.key, exp: s.ks.exp });
+  function scriptUrl(s) {
+    const b = Scripts.baseUrl();
+    if (!b) return "";
+    return (b.endsWith("/") ? b : b + "/") + s.id + ".lua";
+  }
+
+  function ksLink(rec) {
+    if (!rec.ks || !rec.ks.key) return "";
+    const data = b64json.enc({
+      id: rec.id, name: rec.name, tasks: rec.ks.tasks || [],
+      key: rec.ks.key, exp: rec.ks.exp,
+      opts: rec.opts || {}, url: rec.url || ""
+    });
     return location.href.split("#")[0] + "#/key/" + data;
   }
 
-  function ksEnsure(s) {
-    /* auto-generate the service key on first need */
-    if (s.ks && s.ks.key) return s.ks;
-    const made = Keys.generate({ len: 16, dur: "7d", count: 1, note: "ks:" + s.name });
+  function ensureKs(rec, save) {
+    if (rec.ks && rec.ks.key) return rec.ks;
+    const made = Keys.generate({ len: 16, dur: "7d", count: 1, note: "ks:" + rec.name });
     if (!made.ok) return null;
-    s.ks = { key: made.keys[0].key, exp: made.keys[0].expires, tasks: [] };
-    Scripts.save(s);
-    return s.ks;
+    rec.ks = { key: made.keys[0].key, exp: made.keys[0].expires, tasks: [] };
+    if (!rec.opts) rec.opts = { adblock: true, showurl: true };
+    save(rec);
+    return rec.ks;
   }
 
-  function ksPanel(parent, s) {
+  /* adblock bait check — used by the public key page when the owner keeps
+     the "adblock protection" option on */
+  function adblockCheck(cb) {
+    const bait = document.createElement("div");
+    bait.className = "adsbox ad-banner ad_banner text-ads";
+    bait.setAttribute("aria-hidden", "true");
+    bait.style.cssText = "position:absolute;left:-9999px;top:-9999px;width:10px;height:10px;";
+    bait.innerHTML = "&nbsp;";
+    document.body.appendChild(bait);
+    setTimeout(() => {
+      let blocked = false;
+      try {
+        const cs = getComputedStyle(bait);
+        blocked = bait.offsetHeight === 0 || bait.clientHeight === 0 ||
+          cs.display === "none" || cs.visibility === "hidden";
+      } catch (e) { blocked = false; }
+      bait.remove();
+      cb(blocked);
+    }, 80);
+  }
+
+  /* one editor card, shared by the script detail page and the #/ks hub.
+     ent = { rec, save(rec), kind: "script"|"extra" } */
+  function ksCard(parent, ent) {
+    const rec = ent.rec;
     const p = el("div", { class: "panel mb16" });
-    p.innerHTML = '<div class="panel-head"><h3>' + esc(t("ks.title")) + '</h3><span class="badge on">auto</span></div>';
+    p.innerHTML = '<div class="panel-head"><h3>' + esc(t("ks.title")) + "</h3>" +
+      '<span class="badge on">' + esc(rec.name || "").slice(0, 18) + "</span></div>";
     const b = el("div", { class: "panel-body" });
     p.appendChild(b);
     parent.appendChild(p);
 
-    if (!s.keySystem) {
+    if (ent.kind === "script" && !rec.keySystem) {
       b.innerHTML = '<div class="muted small">' + esc(t("ks.off")) + "</div>";
-      return;
+      return p;
     }
-    const ks = ksEnsure(s);
-    if (!ks) return;
+    const ks = ensureKs(rec, ent.save);
+    if (!ks) return p;
 
     /* share link */
     b.appendChild(el("div", { class: "small muted mb8" }, t("ks.link.hint")));
     const row = el("div", { class: "row" });
-    const inp = el("input", { class: "input mono", readonly: "readonly", value: ksLink(s) });
-    row.appendChild(inp);
+    row.appendChild(el("input", { class: "input mono", readonly: "readonly", value: ksLink(rec) }));
     row.appendChild(el("button", {
       class: "btn sm",
-      onclick: () => { copyText(ksLink(s)); toast(t("ks.link.copied"), true); }
+      onclick: () => { copyText(ksLink(rec)); toast(t("ks.link.copied"), true); }
     }, t("ks.copy")));
     b.appendChild(row);
+
+    /* options: adblock protection / show script link */
+    const optsBox = el("div", { class: "mt14" });
+    b.appendChild(optsBox);
+    function optRow(key, label, show) {
+      if (!show) return;
+      const lab = el("label", { class: "tgl mt8" });
+      const cb = el("input", { type: "checkbox" });
+      cb.checked = (rec.opts || {})[key] !== false;
+      cb.addEventListener("change", () => {
+        rec.opts = rec.opts || {};
+        rec.opts[key] = cb.checked;
+        ent.save(rec);
+        rerender();
+      });
+      lab.appendChild(cb);
+      lab.appendChild(el("i"));
+      lab.appendChild(el("span", {}, label));
+      optsBox.appendChild(lab);
+    }
+    optRow("adblock", t("ks.opts.adblock"), true);
+    optRow("showurl", t("ks.opts.showurl"), !!rec.url);
 
     /* tasks */
     const tWrap = el("div", { class: "mt14" });
@@ -3279,7 +3413,7 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       const ui = el("input", { class: "input mono", placeholder: "https://", value: task.u || "", maxlength: "200" });
       r.append(ti, ui, el("button", {
         class: "btn sm danger",
-        onclick: () => { ks.tasks.splice(i, 1); Scripts.save(s); rerender(); }
+        onclick: () => { ks.tasks.splice(i, 1); ent.save(rec); rerender(); }
       }, "×"));
       ti.addEventListener("input", () => { task.t = ti.value; });
       ui.addEventListener("input", () => { task.u = ui.value; });
@@ -3288,13 +3422,13 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
     const tBtns = el("div", { class: "row" });
     tBtns.appendChild(el("button", {
       class: "btn sm ghost",
-      onclick: () => { (ks.tasks = ks.tasks || []).push({ t: "", u: "" }); Scripts.save(s); rerender(); }
+      onclick: () => { (ks.tasks = ks.tasks || []).push({ t: "", u: "" }); ent.save(rec); rerender(); }
     }, "+ " + t("ks.task.add")));
     tBtns.appendChild(el("button", {
       class: "btn sm",
       onclick: () => {
         ks.tasks = (ks.tasks || []).filter(x => (x.t || "").trim() || (x.u || "").trim());
-        Scripts.save(s);
+        ent.save(rec);
         toast(t("ks.tasks.saved"), true);
         rerender();
       }
@@ -3305,12 +3439,12 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
     const rot = el("button", { class: "btn sm mt14" });
     rot.addEventListener("click", () => {
       if (Cool.left("keys") > 0) return;
-      const made = Keys.generate({ len: 16, dur: "7d", count: 1, note: "ks:" + s.name });
+      const made = Keys.generate({ len: 16, dur: "7d", count: 1, note: "ks:" + rec.name });
       if (!made.ok) return;
       ks.key = made.keys[0].key;
       ks.exp = made.keys[0].expires;
-      s.updated = Date.now();
-      Scripts.save(s);
+      rec.updated = Date.now();
+      ent.save(rec);
       Cool.set("keys");
       Auth.log("key.gen", "ks rotate");
       toast(t("ks.rotated"), true);
@@ -3319,14 +3453,75 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
     b.appendChild(rot);
     cooldownButton(rot, "keys", t("ks.rotate"));
 
-    b.appendChild(el("div", { class: "hint mt14" }, t("ks.exp", fmt.date(ks.exp))));
+    const foot = el("div", { class: "row between mt14" });
+    foot.appendChild(el("span", { class: "hint" }, t("ks.exp", fmt.date(ks.exp))));
+    if (ent.kind === "extra") {
+      foot.appendChild(el("button", {
+        class: "btn sm danger",
+        onclick: () => confirmBox(t("ks.extra.del.q", rec.name), () => { Extra.remove(rec.id); toast(t("keys.ok.del")); rerender(); }, t("keys.act.delete"))
+      }, t("keys.act.delete")));
+    } else {
+      foot.appendChild(el("a", { class: "btn sm ghost", href: "#/scripts/" + rec.id }, t("ks.hub.open")));
+    }
+    b.appendChild(foot);
+    return p;
   }
+
+  /* ---------- key service hub: #/ks ---------- */
+
+  Pages.ks = function (root) {
+    root.innerHTML = pageHead("ks", t("ks.hub.title"), t("ks.hub.sub")) +
+      '<div class="wrap section tight" style="padding-top:26px">' +
+      '<div class="panel mb16"><div class="panel-head"><h3>' + esc(t("ks.attach")) + "</h3></div>" +
+      '<div class="panel-body"><form class="form" id="ksAttach">' +
+      '<div class="grid g2"><div class="field"><label>' + esc(t("ks.attach.name")) + "</label>" +
+      '<input class="input" name="name" maxlength="40" placeholder="' + esc(t("ks.attach.name.ph")) + '"></div>' +
+      '<div class="field"><label>' + esc(t("ks.attach.url")) + "</label>" +
+      '<input class="input mono" name="url" maxlength="200" placeholder="https://"></div></div>' +
+      '<span class="hint">' + esc(t("ks.attach.hint")) + "</span>" +
+      '<div class="row"><button class="btn solid" type="submit">' + esc(t("ks.attach.btn")) + "</button></div>" +
+      "</form></div></div>" +
+      '<div id="ksHub"></div></div>';
+
+    root.querySelector("#ksAttach").addEventListener("submit", e => {
+      e.preventDefault();
+      const f = e.target;
+      const name = f.querySelector('[name=name]').value.trim();
+      if (!name) return toast(t("scr.e.name"));
+      Extra.add(name, f.querySelector('[name=url]').value.trim());
+      Auth.log("ks.attach", name);
+      toast(t("ks.attach.ok"), true);
+      rerender();
+    });
+
+    const hub = root.querySelector("#ksHub");
+    const scripts = Scripts.list().filter(s => s.keySystem);
+    const extras = Extra.list();
+    if (!scripts.length && !extras.length) {
+      hub.appendChild(el("div", { class: "empty" },
+        "<b>" + esc(t("ks.hub.empty")) + "</b>" + esc(t("ks.hub.emptyd"))));
+      return;
+    }
+    scripts.forEach(s => {
+      s.url = scriptUrl(s);
+      ksCard(hub, { rec: s, kind: "script", save: r => { r.updated = Date.now(); Scripts.save(r); } });
+    });
+    extras.forEach(x => ksCard(hub, {
+      rec: x, kind: "extra",
+      save: r => {
+        const list = Extra.list();
+        const i = list.findIndex(z => z.id === r.id);
+        if (i >= 0) { r.updated = Date.now(); list[i] = r; Extra.write(list); }
+      }
+    }));
+  };
 
   /* ---------- public "get key" page (#/key/<data>) ---------- */
 
   Pages.keyshare = function (root, args) {
     const d = b64json.dec(args[0]);
     if (!d || !d.key) { Pages["404"](root); return; }
+    const opts = d.opts || {};
 
     root.innerHTML =
       '<div class="wrap section" style="max-width:680px;padding-top:48px">' +
@@ -3350,17 +3545,35 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
       b.appendChild(el("div", { class: "hint mb16" }, t("ks.page.tasks.hint")));
     }
 
-    const reveal = el("button", { class: "btn solid lg" }, tasks.length ? t("ks.page.done") : t("ks.page.get"));
-    b.appendChild(reveal);
-    reveal.addEventListener("click", () => {
-      reveal.remove();
+    function reveal() {
       const kb = el("div", { class: "keybox mt16" });
       kb.innerHTML = '<span class="mono">' + esc(d.key) + "</span>";
-      const cp = el("button", { class: "btn sm", onclick: () => { copyText(d.key); toast(t("ks.link.copied"), true); } }, t("ks.copy"));
-      kb.appendChild(cp);
+      kb.appendChild(el("button", { class: "btn sm", onclick: () => { copyText(d.key); toast(t("ks.link.copied"), true); } }, t("ks.copy")));
       b.appendChild(kb);
       if (d.exp) b.appendChild(el("div", { class: "hint mt8" }, t("ks.exp", fmt.date(d.exp))));
       b.appendChild(el("div", { class: "hint mt8 mono" }, "key = '" + esc(d.key) + "'"));
+      if (d.url && opts.showurl !== false) {
+        b.appendChild(el("a", { class: "btn sm mt14", href: d.url, target: "_blank", rel: "noopener" }, t("ks.page.script.open")));
+      }
+    }
+
+    const revealBtn = el("button", { class: "btn solid lg" }, tasks.length ? t("ks.page.done") : t("ks.page.get"));
+    b.appendChild(revealBtn);
+    revealBtn.addEventListener("click", () => {
+      if (opts.adblock !== false) {
+        adblockCheck(blocked => {
+          if (blocked) {
+            revealBtn.remove();
+            b.appendChild(el("div", { class: "hint mt16" }, t("ks.adblock.msg")));
+            return;
+          }
+          revealBtn.remove();
+          reveal();
+        });
+      } else {
+        revealBtn.remove();
+        reveal();
+      }
     });
   };
 
@@ -3392,7 +3605,9 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
      if the engine is unavailable (no WebAssembly) or fails,
      we fall back to the built-in fast obfuscator. */
   async function buildPayload(rec, active) {
-    const src = Payload.sourceFor(rec, active);
+    /* the payload is tied to the key page: on a bad key it prints the link */
+    const link = rec.keySystem && rec.ks ? ksLink(rec) : "";
+    const src = Payload.sourceFor(rec, active, link);
     if (rec.engine !== "obf" && window.PromObf) {
       const r = await PromObf.run(src, { preset: rec.preset || "Medium" });
       if (r.ok) return { payload: r.output, engine: "prom", ms: r.ms };
@@ -3576,7 +3791,8 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
 
     const L = root.querySelector("#colL");
     const R = root.querySelector("#colR");
-    ksPanel(R, s);
+    s.url = scriptUrl(s);
+    ksCard(R, { rec: s, kind: "script", save: r => { r.updated = Date.now(); Scripts.save(r); } });
 
     /* settings panel */
     const set = el("div", { class: "panel mb16" });
@@ -3940,5 +4156,5 @@ ${l}`),this.pop(1)}catch(l){console.warn("Failed to generate stack trace",l)}thr
 })();
 
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a45aeea50c86bd6b',t:'MTc5MTE4NzY0MQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
